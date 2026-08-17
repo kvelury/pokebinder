@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @StateObject private var binder = BinderState()
     @StateObject private var collection = CollectionStore()
+    @StateObject private var notion = NotionManager()
     @State private var showSettings = false
     @FocusState private var searchFocused: Bool
 
@@ -30,6 +31,7 @@ struct ContentView: View {
         .background(WindowConfigurator())
         .environmentObject(binder)
         .environmentObject(collection)
+        .environmentObject(notion)
         .toolbar { toolbarContent }
         // A flat, opaque bar. Without this the titlebar stays translucent and the
         // desktop behind the window shows through along the top edge.
@@ -38,9 +40,14 @@ struct ContentView: View {
         .sheet(isPresented: $showSettings) {
             SettingsSheet()
                 .environmentObject(collection)
+                .environmentObject(notion)
         }
         .task {
-            await collection.load()
+            if notion.isConnected {
+                await collection.use(NotionOwnershipBackend(manager: notion))
+            } else {
+                await collection.load()
+            }
             binder.prefetchNeighbours()
         }
     }

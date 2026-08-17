@@ -5,8 +5,7 @@ import SwiftUI
 /// via the switch at the bottom.
 ///
 /// The `Owned` toggle writes through `CollectionStore`, which is optimistic and
-/// reverts on failure. In part 1 that persists locally; once part 3 lands a Notion
-/// backend, this view does not change at all.
+/// reverts on failure. Persist errors surface under the toggle.
 struct CardDetailPopover: View {
     let dexNumber: Int
 
@@ -45,6 +44,13 @@ struct CardDetailPopover: View {
                 .toggleStyle(.switch)
                 .tint(Theme.brass)
                 .font(Theme.nameFont(size: 14))
+
+            if let message = collection.errorMessage {
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .padding(18)
         .frame(width: 250)
