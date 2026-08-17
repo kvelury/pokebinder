@@ -3,8 +3,8 @@ import SwiftUI
 private enum CardZoom {
     static let pop = Animation.spring(response: 0.34, dampingFraction: 0.82)
     static let reduced = Animation.easeOut(duration: 0.14)
-    /// The panel's fixed width, from CardDetailPanel's own `.frame(width: 250)`.
-    static let panelWidth: CGFloat = 250
+    /// The panel's fixed width, from `CardDetailPanel.width`.
+    static let panelWidth: CGFloat = CardDetailPanel.width
 }
 
 /// The clicked card, lifted out of its pocket and brought to the middle.

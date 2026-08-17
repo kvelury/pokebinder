@@ -7,25 +7,30 @@ import SwiftUI
 /// The `Owned` toggle writes through `CollectionStore`, which is optimistic and
 /// reverts on failure. Persist errors surface under the toggle.
 struct CardDetailPanel: View {
+    /// Wider than a pocket at every window size the binder supports, so the
+    /// overlay reads as a focus view rather than a blown-up popover.
+    static let width: CGFloat = 420
+    static let artSize: CGFloat = 360
+
     let dexNumber: Int
     let onClose: () -> Void
 
     @EnvironmentObject private var collection: CollectionStore
 
     var body: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 16) {
             CardArtworkView(dexNumber: dexNumber)
-                .frame(width: 180, height: 180)
+                .frame(width: Self.artSize, height: Self.artSize)
                 .saturation(isOwned ? 1 : 0)
                 .opacity(isOwned ? 1 : 0.5)
                 .animation(.easeOut(duration: 0.25), value: isOwned)
 
-            VStack(spacing: 3) {
+            VStack(spacing: 4) {
                 Text(Pokedex.name(for: dexNumber))
-                    .font(Theme.nameFont(size: 19))
+                    .font(Theme.nameFont(size: 22))
                     .foregroundStyle(Theme.textPrimary)
                 Text("#\(Pokedex.formattedNumber(dexNumber))")
-                    .font(Theme.numberFont(size: 13))
+                    .font(Theme.numberFont(size: 14))
                     .foregroundStyle(Theme.textSecondary)
             }
 
@@ -44,7 +49,7 @@ struct CardDetailPanel: View {
             Toggle("Owned", isOn: ownedBinding)
                 .toggleStyle(.switch)
                 .tint(Theme.brass)
-                .font(Theme.nameFont(size: 14))
+                .font(Theme.nameFont(size: 15))
 
             if let message = collection.errorMessage {
                 Text(message)
@@ -53,8 +58,8 @@ struct CardDetailPanel: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(18)
-        .frame(width: 250)
+        .padding(24)
+        .frame(width: Self.width)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.page)
         )
