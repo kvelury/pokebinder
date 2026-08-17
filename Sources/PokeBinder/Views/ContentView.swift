@@ -12,6 +12,7 @@ private enum Chrome {
 
 struct ContentView: View {
     @Environment(\.appTheme) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @StateObject private var binder = BinderState()
     @StateObject private var collection = CollectionStore()
     @StateObject private var notion = NotionManager()
@@ -42,14 +43,10 @@ struct ContentView: View {
             }
 
             if let selection {
-                GeometryReader { geo in
-                    CardZoomOverlay(
-                        selection: selection,
-                        containerSize: geo.size,
-                        onDismissed: { self.selection = nil }
-                    )
-                }
-                .transition(.opacity)
+                CardZoomOverlay(
+                    selection: selection,
+                    onDismiss: { self.selection = nil }
+                )
             }
 
             toolbarDivider
@@ -243,7 +240,7 @@ struct ContentView: View {
             .buttonStyle(.plain)
             .pillChrome(in: Capsule(), active: isActive, interactive: true)
             .help(mode.title)
-            .animation(.easeOut(duration: 0.15), value: isActive)
+            .animation(controlMotion, value: isActive)
         } else {
             Button {
                 binder.viewMode = mode
@@ -255,8 +252,12 @@ struct ContentView: View {
             }
             .buttonStyle(.plain)
             .help(mode.title)
-            .animation(.easeOut(duration: 0.15), value: isActive)
+            .animation(controlMotion, value: isActive)
         }
+    }
+
+    private var controlMotion: Animation? {
+        AppMotion.respectingReduceMotion(AppMotion.quick, reduceMotion: reduceMotion)
     }
 
     /// One wide pill holding icon, field, match counter and clear button. Search gets

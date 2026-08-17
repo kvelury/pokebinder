@@ -261,9 +261,14 @@ centre, and a page shadow falling into the gutter.
 **Navigation.** Arrows, ⌘←/⌘→, a two-finger trackpad swipe (interactive — the page follows the
 finger and either completes or springs back), or typing a page number. All clamp to 1…19.
 
-**The page turn.** A 3D rotation on the ring axis, ~0.45s, with a shadow sweeping the page
+**The page turn.** A 3D rotation on the ring axis, ~0.28s, with a shadow sweeping the page
 underneath. Driven from `currentPage` so it retargets mid-flight. **Reduce Motion downgrades it to an
 instant swap** (`@Environment(\.accessibilityReduceMotion)`).
+
+Other app-authored feedback uses a compact motion scale: ~0.08s for pointer and control changes and
+~0.12s for search, ownership, and artwork changes. Reduce Motion disables those animations. Intent
+delays such as the hover-tooltip pause and trackpad inactivity threshold are not part of the motion
+scale.
 
 **Search.** Auto-flip plus spotlight. Typing flips the binder to the first match, rings it in brass,
 rings other matches faintly, and dims non-matches; ⏎ / ⌘G / ⇧⌘G cycle with an "n of m" counter. ⌘F
@@ -301,13 +306,10 @@ icons share one component and use the SVG glyphs and colors from
 through the root-level hover-tooltip host, which keeps tooltips above binder clipping and is designed
 to accept richer hover content later.
 
-**Card zoom.** Clicking a pocket grows the detail panel out of that pocket and springs it to the
-centre of the window. A scrim dims the whole content area — pager bar and count pill included; the
-top functional controls stay bright. Dismiss by clicking the scrim, pressing Esc, or the ✕ on the panel; clicking
-the panel itself does not dismiss (it would fight the Owned switch). Reduce Motion skips the travel
-and the scale: the panel appears centred with a fade. Selection is a `CGRect` captured at tap time,
-not `matchedGeometryEffect` — `BinderStack` draws the same pocket twice during a page turn, which
-would give one namespace two sources for the same id.
+**Card detail.** Clicking a pocket presents the detail panel immediately in the centre of the
+window. A scrim dims the whole content area — pager bar and count pill included; the top functional
+controls stay bright. Dismissal is immediate too, whether it comes from the scrim, Esc, or the ✕ on
+the panel. Clicking the panel itself does not dismiss (it would fight the Owned switch).
 
 The overlay is hosted in `ContentView` so it can sit above the pager. That is not enough on its own
 for the trackpad. `TrackpadPageTurnCatcher` installs a local `NSEvent` scroll-wheel monitor that

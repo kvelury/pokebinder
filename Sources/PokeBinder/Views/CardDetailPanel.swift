@@ -17,6 +17,7 @@ struct CardDetailPanel: View {
 
     @EnvironmentObject private var collection: CollectionStore
     @Environment(\.appTheme) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage(AppSettings.typeEraKey) private var typeEra: TypeEra = .current
 
     var body: some View {
@@ -25,7 +26,7 @@ struct CardDetailPanel: View {
                 .frame(width: Self.artSize, height: Self.artSize)
                 .saturation(isOwned ? 1 : 0)
                 .opacity(isOwned ? 1 : 0.5)
-                .animation(.easeOut(duration: 0.25), value: isOwned)
+                .animation(ownershipMotion, value: isOwned)
 
             VStack(spacing: 4) {
                 Text(Pokedex.name(for: dexNumber))
@@ -105,6 +106,10 @@ struct CardDetailPanel: View {
     }
 
     private var isOwned: Bool { collection.isOwned(dexNumber) }
+
+    private var ownershipMotion: Animation? {
+        AppMotion.respectingReduceMotion(AppMotion.feedback, reduceMotion: reduceMotion)
+    }
 
     private var ownedBinding: Binding<Bool> {
         Binding(

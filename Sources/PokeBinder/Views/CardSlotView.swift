@@ -14,10 +14,9 @@ struct CardSlotView: View {
     @Binding var selection: CardSelection?
 
     @Environment(\.appTheme) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage(AppSettings.typeEraKey) private var typeEra: TypeEra = .current
     @State private var isHovering = false
-    /// The pocket's own frame, kept current so a tap can hand it to the overlay.
-    @State private var frameInContent: CGRect = .zero
 
     private var shape: RoundedRectangle {
         RoundedRectangle(cornerRadius: metrics.cardCornerRadius, style: .continuous)
@@ -31,9 +30,6 @@ struct CardSlotView: View {
             }
         }
         .frame(width: metrics.cardWidth, height: metrics.cardHeight)
-        .onGeometryChange(for: CGRect.self) { proxy in
-            proxy.frame(in: .named(BinderSpace.content))
-        } action: { frameInContent = $0 }
         .overlay(border)
         .contentShape(shape)
         .opacity(emphasis == .dimmed ? 0.32 : 1)
@@ -42,16 +38,16 @@ struct CardSlotView: View {
             color: theme.brass.opacity(emphasis == .spotlit ? 0.45 : 0),
             radius: metrics.cardWidth * 0.09
         )
-        .animation(.easeOut(duration: 0.22), value: emphasis)
-        .animation(.easeOut(duration: 0.15), value: isHovering)
-        .animation(.easeOut(duration: 0.2), value: isOwned)
+        .animation(motion(AppMotion.feedback), value: emphasis)
+        .animation(motion(AppMotion.quick), value: isHovering)
+        .animation(motion(AppMotion.feedback), value: isOwned)
         .onHover { isHovering = $0 }
         .onTapGesture {
             guard let dex = slot.dexNumber else { return }
             if selection?.dexNumber == dex {
                 selection = nil
             } else {
-                selection = CardSelection(dexNumber: dex, sourceRect: frameInContent)
+                selection = CardSelection(dexNumber: dex)
             }
         }
         .accessibilityElement(children: .ignore)
@@ -156,6 +152,10 @@ struct CardSlotView: View {
         if emphasis == .spotlit { return 1.04 }
         if isHovering && slot.dexNumber != nil { return 1.02 }
         return 1
+    }
+
+    private func motion(_ animation: Animation) -> Animation? {
+        AppMotion.respectingReduceMotion(animation, reduceMotion: reduceMotion)
     }
 
     private var accessibilityLabel: String {
