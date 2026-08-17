@@ -7,6 +7,8 @@ enum AppMotion {
     static let quick = Animation.easeOut(duration: 0.08)
     /// Search, ownership, and content-reveal feedback.
     static let feedback = Animation.easeOut(duration: 0.12)
+    /// Pocket-to-detail presentation and dismissal.
+    static let cardDetail = Animation.spring(response: 0.20, dampingFraction: 0.88)
 
     static let pageTurnDuration: TimeInterval = 0.28
     static let pageTurnMinimumDuration: TimeInterval = 0.08

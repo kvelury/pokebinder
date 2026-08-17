@@ -17,6 +17,7 @@ struct CardSlotView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage(AppSettings.typeEraKey) private var typeEra: TypeEra = .current
     @State private var isHovering = false
+    @State private var frameInContent: CGRect = .zero
 
     private var shape: RoundedRectangle {
         RoundedRectangle(cornerRadius: metrics.cardCornerRadius, style: .continuous)
@@ -30,6 +31,9 @@ struct CardSlotView: View {
             }
         }
         .frame(width: metrics.cardWidth, height: metrics.cardHeight)
+        .onGeometryChange(for: CGRect.self) { proxy in
+            proxy.frame(in: .named(BinderSpace.content))
+        } action: { frameInContent = $0 }
         .overlay(border)
         .contentShape(shape)
         .opacity(emphasis == .dimmed ? 0.32 : 1)
@@ -47,7 +51,7 @@ struct CardSlotView: View {
             if selection?.dexNumber == dex {
                 selection = nil
             } else {
-                selection = CardSelection(dexNumber: dex)
+                selection = CardSelection(dexNumber: dex, sourceRect: frameInContent)
             }
         }
         .accessibilityElement(children: .ignore)

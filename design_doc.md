@@ -306,10 +306,11 @@ icons share one component and use the SVG glyphs and colors from
 through the root-level hover-tooltip host, which keeps tooltips above binder clipping and is designed
 to accept richer hover content later.
 
-**Card detail.** Clicking a pocket presents the detail panel immediately in the centre of the
-window. A scrim dims the whole content area — pager bar and count pill included; the top functional
-controls stay bright. Dismissal is immediate too, whether it comes from the scrim, Esc, or the ✕ on
-the panel. Clicking the panel itself does not dismiss (it would fight the Owned switch).
+**Card detail.** Clicking a pocket quickly springs the detail panel from that pocket to the centre
+of the window; dismissal reverses the same short transition. A scrim dims the whole content area —
+pager bar and count pill included; the top functional controls stay bright. Dismiss with the scrim,
+Esc, or the ✕ on the panel. Clicking the panel itself does not dismiss (it would fight the Owned
+switch). Reduce Motion replaces the travel and scale with the quick fade.
 
 The overlay is hosted in `ContentView` so it can sit above the pager. That is not enough on its own
 for the trackpad. `TrackpadPageTurnCatcher` installs a local `NSEvent` scroll-wheel monitor that

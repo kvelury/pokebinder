@@ -43,10 +43,13 @@ struct ContentView: View {
             }
 
             if let selection {
-                CardZoomOverlay(
-                    selection: selection,
-                    onDismiss: { self.selection = nil }
-                )
+                GeometryReader { geo in
+                    CardZoomOverlay(
+                        selection: selection,
+                        containerSize: geo.size,
+                        onDismissed: { self.selection = nil }
+                    )
+                }
             }
 
             toolbarDivider

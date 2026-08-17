@@ -56,12 +56,13 @@ enum SlotEmphasis {
     case dimmed
 }
 
-/// A pocket the user clicked to inspect.
+/// A pocket the user clicked, plus its on-screen frame for the detail transition.
 struct CardSelection: Equatable {
     let dexNumber: Int
+    let sourceRect: CGRect
 }
 
-/// The coordinate space used to place root-level hover tooltips. Named on
+/// The coordinate space shared by card transitions and root-level hover tooltips. Named on
 /// `ContentView`'s root ZStack, which is the content area below the toolbar.
 enum BinderSpace {
     static let content = "binder.content"
