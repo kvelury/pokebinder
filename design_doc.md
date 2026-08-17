@@ -61,12 +61,18 @@ Two consequences worth knowing:
 ### Building and running
 
 ```bash
-./build.sh              # → build/PokéBinder.app, ad-hoc signed
+./build.sh              # → build/PokéBinder.app, ad-hoc signed and verified
 ./build.sh --install    # also replaces /Applications/PokéBinder.app (opt-in on purpose)
 ```
 
-SPM produces an ASCII `PokeBinder` binary; `build.sh` renames it to `PokéBinder` on the copy into
-`Contents/MacOS/`, which is what `CFBundleExecutable` must match. `build.sh` quits a running copy by
+SPM produces an ASCII `PokeBinder` binary; `build.sh` copies it into `Contents/MacOS/` under that same
+ASCII name, which is what `CFBundleExecutable` must match. **Do not rename the executable to the
+accented `PokéBinder` inside the bundle** — `codesign` fails to exclude a non-ASCII main-executable
+filename from its resource-sealing rule, seals its pre-signature hash, and leaves the bundle failing
+`codesign --verify` (this broke the Stage Manager icon in practice: a bundle that fails signature
+verification can be shown as a placeholder by system icon surfaces even though `NSWorkspace` reads the
+icon fine). The bundle directory name and `CFBundleDisplayName`/`CFBundleName` stay accented — only
+the executable filename is ASCII. `build.sh` quits a running copy by
 **bundle id** (`quit app id "com.pokebinder.app"`), which is immune to display-name changes and
 LaunchServices name caching.
 

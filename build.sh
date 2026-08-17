@@ -30,9 +30,10 @@ APP=build/PokéBinder.app
 echo "==> Assembling ${APP}…"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-# SPM emits the ASCII target name; CFBundleExecutable must match the filename
-# we place in Contents/MacOS, which is the accented display name.
-cp .build/release/PokeBinder "$APP/Contents/MacOS/PokéBinder"
+# SPM emits the ASCII target name and CFBundleExecutable matches it. Do not use the
+# accented name here: codesign fails to exclude a non-ASCII main executable from resource
+# sealing, seals its pre-signature hash, and leaves the bundle failing --verify.
+cp .build/release/PokeBinder "$APP/Contents/MacOS/PokeBinder"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 # Info.plist points CFBundleIconFile at this name; regenerate it with
 # Resources/AppIcon/make-icon.swift if the artwork changes.
@@ -40,6 +41,7 @@ cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 
 echo "==> Signing (ad-hoc)…"
 codesign --force --sign - "$APP"
+codesign --verify --verbose=1 "$APP"
 
 if [ "$INSTALL" = true ]; then
     DEST="/Applications/PokéBinder.app"
