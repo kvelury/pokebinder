@@ -14,7 +14,7 @@ struct BinderView: View {
     @EnvironmentObject private var collection: CollectionStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    @State private var selectedDex: Int?
+    @Binding var selection: CardSelection?
 
     /// The spread the turn is leaving. Settled when it equals `toPage` and `angle` is 0.
     @State private var fromPage: Int = 1
@@ -48,12 +48,12 @@ struct BinderView: View {
                 toPage: toPage,
                 angle: reduceMotion ? 0 : angle,
                 metrics: metrics,
-                selectedDex: $selectedDex
+                selection: $selection
             )
             .frame(width: metrics.totalWidth, height: metrics.totalHeight)
             .frame(width: geo.size.width, height: geo.size.height - bottomInset + outerInset, alignment: .center)
             .overlay {
-                TrackpadPageTurnCatcher(isTracking: swipe != nil) { event in
+                TrackpadPageTurnCatcher(isTracking: swipe != nil, isSuspended: selection != nil) { event in
                     handleScroll(event, pageWidth: metrics.pageWidth)
                 }
                 .allowsHitTesting(false)
@@ -61,13 +61,15 @@ struct BinderView: View {
         }
         // Clicking the page background dismisses an open card popover.
         .contentShape(Rectangle())
-        .onTapGesture { selectedDex = nil }
+        .onTapGesture { selection = nil }
         .onAppear {
             fromPage = binder.currentPage
             toPage = binder.currentPage
         }
         .onChange(of: binder.currentPage) { _, newValue in
-            selectedDex = nil
+            if selection != nil {
+                withAnimation(.easeOut(duration: 0.16)) { selection = nil }
+            }
             if ignorePageChange == newValue {
                 ignorePageChange = nil
                 return
@@ -162,6 +164,7 @@ struct BinderView: View {
     // MARK: - Trackpad
 
     private func handleScroll(_ event: TrackpadScrollEvent, pageWidth: CGFloat) {
+        guard selection == nil else { return }
         let deltaX = event.deltaX
         let phase = event.phase
         let momentum = event.momentum
@@ -366,7 +369,7 @@ struct BinderStack: View {
     let toPage: Int
     let angle: Double
     let metrics: BinderMetrics
-    @Binding var selectedDex: Int?
+    @Binding var selection: CardSelection?
 
     private var isTurning: Bool { abs(angle) > 0.5 || fromPage != toPage }
     private var showingFront: Bool { abs(angle) < 90 }
@@ -435,7 +438,7 @@ struct BinderStack: View {
                 page: isForward ? fromPage : toPage,
                 side: .left,
                 metrics: metrics,
-                selectedDex: $selectedDex
+                selection: $selection
             )
             .overlay { if !isForward { pageShadow(toward: .trailing) } }
             spineGutter
@@ -443,7 +446,7 @@ struct BinderStack: View {
                 page: isForward ? toPage : fromPage,
                 side: .right,
                 metrics: metrics,
-                selectedDex: $selectedDex
+                selection: $selection
             )
             .overlay { if isForward { pageShadow(toward: .leading) } }
         }
@@ -471,7 +474,7 @@ struct BinderStack: View {
                 HStack(spacing: 0) {
                     Color.clear.frame(width: metrics.pageWidth, height: metrics.pageHeight)
                     spineGutter
-                    PageSideView(page: fromPage, side: .right, metrics: metrics, selectedDex: $selectedDex)
+                    PageSideView(page: fromPage, side: .right, metrics: metrics, selection: $selection)
                         .rotation3DEffect(
                             .degrees(angle),
                             axis: (x: 0, y: 1, z: 0),
@@ -483,7 +486,7 @@ struct BinderStack: View {
                 }
             } else {
                 HStack(spacing: 0) {
-                    PageSideView(page: toPage, side: .left, metrics: metrics, selectedDex: $selectedDex)
+                    PageSideView(page: toPage, side: .left, metrics: metrics, selection: $selection)
                         .rotation3DEffect(
                             .degrees(angle + 180),
                             axis: (x: 0, y: 1, z: 0),
@@ -499,7 +502,7 @@ struct BinderStack: View {
         } else {
             if showingFront {
                 HStack(spacing: 0) {
-                    PageSideView(page: fromPage, side: .left, metrics: metrics, selectedDex: $selectedDex)
+                    PageSideView(page: fromPage, side: .left, metrics: metrics, selection: $selection)
                         .rotation3DEffect(
                             .degrees(angle),
                             axis: (x: 0, y: 1, z: 0),
@@ -515,7 +518,7 @@ struct BinderStack: View {
                 HStack(spacing: 0) {
                     Color.clear.frame(width: metrics.pageWidth, height: metrics.pageHeight)
                     spineGutter
-                    PageSideView(page: toPage, side: .right, metrics: metrics, selectedDex: $selectedDex)
+                    PageSideView(page: toPage, side: .right, metrics: metrics, selection: $selection)
                         .rotation3DEffect(
                             .degrees(angle - 180),
                             axis: (x: 0, y: 1, z: 0),
@@ -617,6 +620,7 @@ struct SpineView: View {
 /// so the page can follow the finger — a SwiftUI `DragGesture` would require a click-drag.
 private struct TrackpadPageTurnCatcher: NSViewRepresentable {
     var isTracking: Bool
+    var isSuspended: Bool
     var onScroll: (TrackpadScrollEvent) -> Void
 
     func makeCoordinator() -> Coordinator {
@@ -632,6 +636,7 @@ private struct TrackpadPageTurnCatcher: NSViewRepresentable {
 
     func updateNSView(_ nsView: CatcherView, context: Context) {
         context.coordinator.isTracking = isTracking
+        context.coordinator.isSuspended = isSuspended
         context.coordinator.onScroll = onScroll
         nsView.coordinator = context.coordinator
         context.coordinator.view = nsView
@@ -644,6 +649,7 @@ private struct TrackpadPageTurnCatcher: NSViewRepresentable {
     final class Coordinator {
         weak var view: CatcherView?
         var isTracking = false
+        var isSuspended = false
         var onScroll: ((TrackpadScrollEvent) -> Void)?
         private var monitor: Any?
 
@@ -662,6 +668,7 @@ private struct TrackpadPageTurnCatcher: NSViewRepresentable {
         }
 
         private func handle(_ event: NSEvent) -> NSEvent? {
+            if isSuspended { return event }
             guard let view else { return event }
             guard event.window === view.window else { return event }
             let location = view.convert(event.locationInWindow, from: nil)

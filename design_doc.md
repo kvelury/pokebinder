@@ -8,7 +8,7 @@ that got it here and the reasons they should not be quietly undone.
 - `handoff.md` is **not** tracked (it is in `.gitignore`). It is scratch: the work order for whoever
   is picking up the next chunk. Nothing durable should live only there.
 
-Last updated for: **Part 5 — Theme settings**. Parts 1–5 are shipped.
+Last updated for: **Part 6 — Card zoom**. Parts 1–6 are shipped.
 
 ---
 
@@ -142,7 +142,8 @@ Sources/PokeBinder/
     ├── BinderView.swift         the 3D page turn, cover, spread, spine, trackpad catcher
     ├── PageSideView.swift       one page: 2×2 pockets + gutter shadow
     ├── CardSlotView.swift       one pocket: badge, art, name, owned/missing/spotlight
-    ├── CardDetailPopover.swift  big art + the Owned toggle
+    ├── CardDetailPanel.swift    the centred detail panel + the Owned toggle
+    ├── CardZoomOverlay.swift    scrim + the pocket→centre pop
     ├── PagerBar.swift           ◀ · click-to-edit N / 19 · ▶, and CollectedCountPill
     ├── PillChrome.swift         the single pill surface
     ├── GridViewStub.swift       "Coming soon"
@@ -284,8 +285,23 @@ highlighted blue. `WindowConfigurator` also clears the initial first responder.)
 name centred at the base. Cards you don't own are **greyscale behind a dashed sleeve**, with the
 number still fully legible — that was the point of choosing a corner badge over text over the art.
 
-**Ownership.** Clicking a card opens a **detail popover with an explicit `Owned` toggle**. Never
-click-to-toggle — too easy to change your collection by accident while browsing.
+**Ownership.** Clicking a card pops today's **detail panel to the centre of the window, with an
+explicit `Owned` toggle**. Never click-to-toggle — too easy to change your collection by accident
+while browsing.
+
+**Card zoom.** Clicking a pocket grows the detail panel out of that pocket and springs it to the
+centre of the window. A scrim dims the whole content area — pager bar and count pill included; the
+toolbar stays bright. Dismiss by clicking the scrim, pressing Esc, or the ✕ on the panel; clicking
+the panel itself does not dismiss (it would fight the Owned switch). Reduce Motion skips the travel
+and the scale: the panel appears centred with a fade. Selection is a `CGRect` captured at tap time,
+not `matchedGeometryEffect` — `BinderStack` draws the same pocket twice during a page turn, which
+would give one namespace two sources for the same id.
+
+The overlay is hosted in `ContentView` so it can sit above the pager. That is not enough on its own
+for the trackpad. `TrackpadPageTurnCatcher` installs a local `NSEvent` scroll-wheel monitor that
+does **not** go through SwiftUI hit testing, so a scrim above it would still let two fingers turn
+the page underneath the panel. While a card is up the catcher is suspended and **returns the event
+unconsumed** — swallowing it would deaden scrolling app-wide, including in the Settings sheet.
 
 **Grid view.** The Binder/Grid segment is live and switchable, and Grid lands on a "Coming soon"
 empty state.
@@ -318,7 +334,7 @@ the system" — and applies it as **`NSApplication.shared.appearance`**.
 
 App-wide rather than per-window on purpose. `.preferredColorScheme` on the main content would leave
 out the surfaces that live in **their own windows**: the Settings sheet (where the control itself
-is), the `CardDetailPopover`, and the native toolbar/titlebar.
+is) and the native toolbar/titlebar.
 
 Nothing in `Theme.swift` participates. The dynamic-provider mechanism in §5 re-resolves all 17 tokens
 against the new appearance automatically.
@@ -338,8 +354,9 @@ Planned, not built. What it would actually cost:
   binder's gradients go flat: `coverHighlight → cover → coverDeep`, `brassBright → brass →
   brassDeep`, and the `controlFill` / `controlFillActive` / `controlStroke` trio.
 - **Some shading is deliberately not themed.** The hardcoded `.white.opacity(…)` / `.black.opacity(…)`
-  overlays in `BinderView`, `PageSideView`, `CardSlotView` and `PillChrome` are physicality shading,
-  not palette. A very light or very dark palette would need them revisited.
+  overlays in `BinderView`, `PageSideView`, `CardSlotView` and `PillChrome`, and the black scrim in
+  `CardZoomOverlay`, are physicality shading, not palette. A very light or very dark palette would
+  need them revisited.
 - **One known gap:** the connected status dot in `SettingsSheet` is a hardcoded `Color.green` — the
   only semantic color in the app that isn't a `Theme` token.
 
@@ -358,7 +375,7 @@ without asking.**
 | **Card art centred in the pocket** | Square artwork in a 5:7 pocket was top-aligned, dumping all its slack below and reading as sitting too high. |
 | **Search pill: no outline at all** | It had two — ours, and macOS 26's own toolbar-item container 3pt outside it. The doubled edge was the complaint. |
 | **Missing cards: greyscale + dashed sleeve** | Reads as "empty pocket" at a glance while keeping the number readable. |
-| **Detail popover with an explicit toggle** | Never click-to-toggle; browsing shouldn't mutate the collection. |
+| **Card pops to the centre over a scrim, explicit toggle** | Never click-to-toggle; browsing shouldn't mutate the collection. |
 | **Three separate pager pills, click-to-edit number** | The gap gives the field's focus ring room; arrows want to be round. Click-to-edit stops the app opening with the number selected. |
 | **Adaptive light/dark, now with a Light/Dark/Auto override** | Auto stays the default — the app follows System Settings unless told otherwise. |
 | **Forest green + brass** | The cover and hardware palette. |

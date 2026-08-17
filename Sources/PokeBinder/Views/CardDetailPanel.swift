@@ -6,8 +6,9 @@ import SwiftUI
 ///
 /// The `Owned` toggle writes through `CollectionStore`, which is optimistic and
 /// reverts on failure. Persist errors surface under the toggle.
-struct CardDetailPopover: View {
+struct CardDetailPanel: View {
     let dexNumber: Int
+    let onClose: () -> Void
 
     @EnvironmentObject private var collection: CollectionStore
 
@@ -54,6 +55,27 @@ struct CardDetailPopover: View {
         }
         .padding(18)
         .frame(width: 250)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.page)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(Theme.controlStroke, lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.35), radius: 28, y: 12)
+        .overlay(alignment: .topTrailing) {
+            Button(action: onClose) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(Theme.textSecondary)
+                    .frame(width: 22, height: 22)
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .pillChrome(in: Circle())
+            .padding(10)
+            .help("Close")
+        }
     }
 
     private var isOwned: Bool { collection.isOwned(dexNumber) }

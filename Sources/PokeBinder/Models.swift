@@ -55,3 +55,19 @@ enum SlotEmphasis {
     /// Search running and this slot does not match.
     case dimmed
 }
+
+/// A pocket the user clicked, plus where that pocket was on screen when they
+/// clicked it. The rect is what the detail panel grows out of and shrinks back
+/// into — captured at tap time rather than tracked live, so a page turn or a
+/// window resize behind the panel cannot move the target mid-flight.
+struct CardSelection: Equatable {
+    let dexNumber: Int
+    /// The pocket's frame in the `BinderSpace.content` coordinate space.
+    let sourceRect: CGRect
+}
+
+/// The one coordinate space the pocket and the zoom overlay agree on. Named on
+/// `ContentView`'s root ZStack, which is the content area below the toolbar.
+enum BinderSpace {
+    static let content = "binder.content"
+}

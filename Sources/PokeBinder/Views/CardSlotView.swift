@@ -11,9 +11,11 @@ struct CardSlotView: View {
     let metrics: BinderMetrics
     let isOwned: Bool
     let emphasis: SlotEmphasis
-    @Binding var selectedDex: Int?
+    @Binding var selection: CardSelection?
 
     @State private var isHovering = false
+    /// The pocket's own frame, kept current so a tap can hand it to the overlay.
+    @State private var frameInContent: CGRect = .zero
 
     private var shape: RoundedRectangle {
         RoundedRectangle(cornerRadius: metrics.cardCornerRadius, style: .continuous)
@@ -27,6 +29,9 @@ struct CardSlotView: View {
             }
         }
         .frame(width: metrics.cardWidth, height: metrics.cardHeight)
+        .onGeometryChange(for: CGRect.self) { proxy in
+            proxy.frame(in: .named(BinderSpace.content))
+        } action: { frameInContent = $0 }
         .overlay(border)
         .contentShape(shape)
         .opacity(emphasis == .dimmed ? 0.32 : 1)
@@ -41,11 +46,10 @@ struct CardSlotView: View {
         .onHover { isHovering = $0 }
         .onTapGesture {
             guard let dex = slot.dexNumber else { return }
-            selectedDex = (selectedDex == dex) ? nil : dex
-        }
-        .popover(isPresented: popoverBinding, arrowEdge: .bottom) {
-            if let dex = slot.dexNumber {
-                CardDetailPopover(dexNumber: dex)
+            if selection?.dexNumber == dex {
+                selection = nil
+            } else {
+                selection = CardSelection(dexNumber: dex, sourceRect: frameInContent)
             }
         }
         .accessibilityElement(children: .ignore)
@@ -142,13 +146,6 @@ struct CardSlotView: View {
         if emphasis == .spotlit { return 1.04 }
         if isHovering && slot.dexNumber != nil { return 1.02 }
         return 1
-    }
-
-    private var popoverBinding: Binding<Bool> {
-        Binding(
-            get: { slot.dexNumber != nil && selectedDex == slot.dexNumber },
-            set: { if !$0 { selectedDex = nil } }
-        )
     }
 
     private var accessibilityLabel: String {
