@@ -1,4 +1,5 @@
 import Foundation
+import PokeBinderSync
 import SwiftUI
 
 /// Where ownership comes from and goes to.
@@ -15,8 +16,9 @@ protocol OwnershipBackend: AnyObject {
     /// Full state of the collection, keyed by Pokédex number.
     func loadOwnership() async throws -> [Int: Bool]
 
-    /// Persist a single change. Throwing here makes `CollectionStore` revert the
-    /// optimistic local flip and surface the error.
+    /// Persist a single change. For the local backend this writes immediately.
+    /// For Notion it queues the edit; `CollectionStore` flushes the queue on sync.
+    /// Throwing here makes `CollectionStore` revert the optimistic local flip.
     func setOwned(dex: Int, owned: Bool) async throws
 }
 
@@ -45,9 +47,12 @@ final class LocalOwnershipBackend: OwnershipBackend {
 final class CollectionStore: ObservableObject {
     @Published private(set) var owned: Set<Int> = []
     @Published private(set) var isLoading = false
+    @Published private(set) var lastSyncedAt: Date?
+    @Published private(set) var pendingEditCount = 0
     @Published var errorMessage: String?
 
     private(set) var backend: OwnershipBackend
+    private let syncCoordinator = OwnershipSyncCoordinator()
 
     /// The default backend is built in the body rather than as a default argument:
     /// default-argument expressions are evaluated in a nonisolated context, which
@@ -59,6 +64,7 @@ final class CollectionStore: ObservableObject {
     var ownedCount: Int { owned.count }
     var totalCount: Int { Pokedex.count }
     var backendName: String { backend.displayName }
+    var isSyncing: Bool { isLoading }
 
     func isOwned(_ dex: Int) -> Bool { owned.contains(dex) }
 
@@ -69,30 +75,41 @@ final class CollectionStore: ObservableObject {
     }
 
     func load() async {
-        // Paint the snapshot immediately so a relaunch with a stored token
-        // doesn't wait on the network. `NotionOwnershipBackend` is the only
-        // backend that has one; the protocol itself is unchanged.
-        if let notion = backend as? NotionOwnershipBackend, let cached = notion.cachedOwnership() {
-            owned = Set(cached.filter(\.value).map(\.key))
-        }
-        isLoading = true
-        defer { isLoading = false }
-        do {
-            let ownership = try await backend.loadOwnership()
-            owned = Set(ownership.filter(\.value).map(\.key))
-            errorMessage = nil
-        } catch {
-            errorMessage = error.localizedDescription
-        }
+        paintNotionCacheIfNeeded()
+        await performSync()
+    }
+
+    /// Manual and scheduled refresh share this path: pull Notion, overlay queued
+    /// local edits, push the queue, persist the merge.
+    func resync() async {
+        guard backend is NotionOwnershipBackend else { return }
+        await performSync()
+    }
+
+    func syncIfDue(
+        interval: NotionSyncInterval,
+        customMinutes: Int,
+        now: Date = Date()
+    ) async {
+        guard backend is NotionOwnershipBackend else { return }
+        guard NotionSyncScheduling.isDue(
+            lastSyncedAt: lastSyncedAt,
+            interval: interval,
+            customMinutes: customMinutes,
+            now: now
+        ) else { return }
+        await performSync()
     }
 
     /// Optimistic: flip locally first so the UI never waits on the network, then
-    /// persist. On failure put the old value back and report why.
+    /// persist. Notion-backed edits are queued until the next sync. On failure
+    /// put the old value back and report why.
     func setOwned(_ dex: Int, _ value: Bool) async {
         let previous = owned
         if value { owned.insert(dex) } else { owned.remove(dex) }
         do {
             try await backend.setOwned(dex: dex, owned: value)
+            refreshPendingMetadata()
             errorMessage = nil
         } catch {
             owned = previous
@@ -102,5 +119,64 @@ final class CollectionStore: ObservableObject {
 
     func toggle(_ dex: Int) async {
         await setOwned(dex, !isOwned(dex))
+    }
+
+    private func paintNotionCacheIfNeeded() {
+        guard let notion = backend as? NotionOwnershipBackend else { return }
+        if let cached = notion.cachedOwnership() {
+            owned = Set(cached.filter(\.value).map(\.key))
+        }
+        refreshPendingMetadata()
+    }
+
+    private func refreshPendingMetadata() {
+        guard let notion = backend as? NotionOwnershipBackend else {
+            pendingEditCount = 0
+            return
+        }
+        let state = notion.currentState()
+        pendingEditCount = state.pendingEdits.count
+        if lastSyncedAt == nil {
+            lastSyncedAt = state.lastSyncedAt
+        }
+    }
+
+    private func performSync() async {
+        guard let notion = backend as? NotionOwnershipBackend else {
+            await loadLocal()
+            return
+        }
+
+        if !isLoading {
+            isLoading = true
+        }
+        let outcome = await syncCoordinator.sync(client: notion.remoteClient, state: notion.currentState())
+        switch outcome {
+        case .skippedAlreadyRunning:
+            return
+        case .failed(let message):
+            errorMessage = message
+            isLoading = false
+        case .completed(let state, let writeFailures):
+            notion.persist(state)
+            owned = Set(state.ownership.filter(\.value).map(\.key))
+            lastSyncedAt = state.lastSyncedAt
+            pendingEditCount = state.pendingEdits.count
+            errorMessage = writeFailures.sorted(by: { $0.key < $1.key }).first?.value
+            isLoading = false
+        }
+    }
+
+    private func loadLocal() async {
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            let ownership = try await backend.loadOwnership()
+            owned = Set(ownership.filter(\.value).map(\.key))
+            pendingEditCount = 0
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 }

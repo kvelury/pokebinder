@@ -121,6 +121,79 @@ struct PagerBar: View {
     }
 }
 
+/// Always-visible Notion resync control. Lives at the bottom-left of the main
+/// window in every view and every refresh mode. Disabled only when Notion is
+/// disconnected or a sync is already running.
+struct NotionResyncButton: View {
+    @EnvironmentObject private var collection: CollectionStore
+    @EnvironmentObject private var notion: NotionManager
+    @Environment(\.appTheme) private var theme
+
+    var body: some View {
+        Button {
+            Task { await collection.resync() }
+        } label: {
+            ZStack(alignment: .topTrailing) {
+                Group {
+                    if collection.isLoading {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(theme.textPrimary)
+                    }
+                }
+                .frame(width: 36, height: 36)
+
+                if collection.pendingEditCount > 0 && !collection.isLoading {
+                    Circle()
+                        .fill(theme.brass)
+                        .frame(width: 8, height: 8)
+                        .offset(x: -2, y: 2)
+                }
+            }
+            .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!notion.isConnected || collection.isLoading)
+        .opacity(notion.isConnected ? 1 : 0.35)
+        .floatingPill(in: Circle(), interactive: true)
+        .help(helpText)
+        .accessibilityLabel("Sync with Notion")
+        .accessibilityValue(accessibilityValue)
+    }
+
+    private var helpText: String {
+        if !notion.isConnected {
+            return "Connect to Notion in Settings to sync"
+        }
+        if collection.isLoading {
+            return "Syncing with Notion…"
+        }
+        if collection.pendingEditCount == 1 {
+            return "Sync with Notion (1 queued edit)"
+        }
+        if collection.pendingEditCount > 1 {
+            return "Sync with Notion (\(collection.pendingEditCount) queued edits)"
+        }
+        return "Sync with Notion"
+    }
+
+    private var accessibilityValue: String {
+        if !notion.isConnected {
+            return "Not connected"
+        }
+        if collection.isLoading {
+            return "Syncing"
+        }
+        if collection.pendingEditCount > 0 {
+            return "\(collection.pendingEditCount) queued edits"
+        }
+        return "Ready"
+    }
+}
+
 /// Collected count, sitting opposite the pager on the bottom bar.
 struct CollectedCountPill: View {
     @EnvironmentObject private var collection: CollectionStore

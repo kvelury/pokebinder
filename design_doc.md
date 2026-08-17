@@ -8,7 +8,8 @@ that got it here and the reasons they should not be quietly undone.
 - `handoff.md` is **not** tracked (it is in `.gitignore`). It is scratch: the work order for whoever
   is picking up the next chunk. Nothing durable should live only there.
 
-Last updated for: **Liquid Glass themes**. Parts 1–6 and the optional glass visual system are shipped.
+Last updated for: **Notion scheduled sync**. Parts 1–6, optional Liquid Glass themes, and
+queued two-way Notion refresh are shipped.
 
 ---
 
@@ -81,14 +82,25 @@ LaunchServices name caching.
 Launch through the **`build-and-run-macos-app` skill**. It quits the running instance first — plain
 `open` just foregrounds a stale build, and you will think your change didn't apply.
 
-There is **no test suite**. Verification is by running the app.
+There is a focused sync check executable, `PokeBinderSyncCheck`, covering interval
+resolution, snapshot migration, the durable edit queue, local-wins merging, partial
+write failures, and overlapping syncs. Command Line Tools has no XCTest, so this is
+an ordinary SwiftPM executable rather than `swift test`:
+
+```bash
+swift run PokeBinderSyncCheck
+```
+
+App verification is still by running the built `.app`. Do not treat the checks as a
+substitute for a connected Notion pass.
 
 ### Identifiers that must not change
 
 Each of these keys stored user data; renaming any of them silently discards it.
 
 - `CFBundleIdentifier` = `com.pokebinder.app` — the `UserDefaults` domain is keyed by it.
-- The `pokebinder.*` UserDefaults keys in `AppSettings` (appearance, type era, Notion tokens), and
+- The `pokebinder.*` UserDefaults keys in `AppSettings` (appearance, type era, Notion tokens,
+  `pokebinder.notionSyncInterval`, `pokebinder.notionSyncCustomMinutes`), and
   `localOwnedDexNumbers` in `CollectionStore`.
 - The Application Support paths, which stay ASCII `PokeBinder` despite the display name:
   `PokeBinder/artwork/` and `PokeBinder/ownership.json`.
@@ -128,6 +140,14 @@ Artwork comes from the PokeAPI sprite CDN — 475×475 PNGs with alpha, public a
 ## 4. Architecture
 
 ```
+Sources/PokeBinderSync/          testable sync library (no UI)
+├── NotionSyncInterval.swift     Manual / 1 / 3 / 5 / 8 / Custom + due-date helper
+├── OwnershipSnapshot.swift      ownership.json + pending edits + lastSyncedAt
+├── OwnershipReconciler.swift    local-wins merge
+└── OwnershipSyncCoordinator.swift serialized pull + flush
+
+Tests/PokeBinderSyncCheck/       `swift run PokeBinderSyncCheck`
+
 Sources/PokeBinder/
 ├── PokeBinderApp.swift     @main — WindowGroup, appearance apply, theme environment, window sizing
 ├── Appearance.swift        app style, glass palette, and Light / Dark / Auto
@@ -142,17 +162,16 @@ Sources/PokeBinder/
 │   ├── NotionAuth.swift             OAuth 2.1, dynamic client registration, PKCE, loopback server
 │   ├── NotionMCPClient.swift        Streamable-HTTP MCP: initialize → tools/call, SSE parsing
 │   ├── NotionManager.swift          ObservableObject: connect/disconnect, authorized tool calls
-│   ├── NotionOwnershipBackend.swift the OwnershipBackend conformance
-│   └── OwnershipSnapshot.swift      ~/Library/Application Support/PokeBinder/ownership.json
+│   └── NotionOwnershipBackend.swift queues toggles; CollectionStore flushes on sync
 └── Views/
-    ├── ContentView.swift        owns app state; toolbar, bottom bar, Settings sheet
+    ├── ContentView.swift        owns app state; toolbar, bottom bar, Settings sheet, sync timer
     ├── WindowConfigurator.swift the only NSWindow bridge — hides the title, clears first responder
     ├── BinderView.swift         the 3D page turn, cover, spread, spine, trackpad catcher
     ├── PageSideView.swift       one page: 2×2 pockets + gutter shadow
     ├── CardSlotView.swift       one pocket: badge, art, name, owned/missing/spotlight
     ├── CardDetailPanel.swift    the centred detail panel + the Owned toggle
     ├── CardZoomOverlay.swift    scrim + the pocket→centre pop
-    ├── PagerBar.swift           ◀ · click-to-edit N / 19 · ▶, and CollectedCountPill
+    ├── PagerBar.swift           ◀ · click-to-edit N / 19 · ▶, NotionResyncButton, CollectedCountPill
     ├── PillChrome.swift         shared Classic/glass control and panel surfaces
     ├── GridViewStub.swift       "Coming soon"
     └── SettingsSheet.swift      Collection / Theme / Notion / About sections
@@ -165,8 +184,10 @@ These are what let the app's parts be worked on independently, and they still ho
 1. **`OwnershipBackend`** (`CollectionStore.swift`) — a `@MainActor` protocol of `displayName`,
    `loadOwnership()`, `setOwned(dex:owned:)`. No view knows where ownership lives.
    `CollectionStore.use(_:)` swaps the backend at runtime, which is how connecting Notion takes
-   effect without a relaunch. `CollectionStore` already does the optimistic flip and the
-   revert-on-error, so a backend only has to throw.
+   effect without a relaunch. The local backend writes immediately. The Notion backend **queues**
+   `setOwned` into `ownership.json`; `CollectionStore.resync()` pulls Notion, overlays queued
+   edits (local wins the same Pokédex number), pushes successful writes, and leaves failures
+   queued. Overlapping syncs are rejected by `OwnershipSyncCoordinator`.
 
 2. **`BinderState.goTo(page:)`** — *every* page change funnels through it: arrows, the editable
    field, ⌘←/⌘→, trackpad swipe, and search auto-flip. It is a clamp-and-set;
@@ -182,10 +203,11 @@ Three layers, each defending a different stall:
   the current one, so a flip never lands on empty pockets.
 - `ArtworkImageCache` — a main-actor `NSCache` of decoded `NSImage`s, so scrolling back to a page
   doesn't re-decode.
-- `OwnershipSnapshot` — last-known ownership *and* the Notion row ids, written to
-  `ownership.json`. On launch `CollectionStore.load()` paints from it before the network returns, and
-  because the row ids are cached too, a toggle immediately after launch still reaches the right
-  Notion row.
+- `OwnershipSnapshot` — last-known ownership, Notion row ids, queued local edits, and
+  `lastSyncedAt`, written to `ownership.json`. On launch `CollectionStore.load()` paints the
+  snapshot (pending edits overlaid) before the network returns. Older files without the new
+  fields still load; pending starts empty. A toggle updates the queue immediately and is written
+  to Notion on the next sync, not on the click.
 
 While artwork loads, a pocket draws `Color.clear` rather than a spinner — eight spinners on a spread
 is noisier than the art simply arriving.
@@ -340,9 +362,14 @@ Preference keys follow `AppSettings`: `static let <name>Key = "pokebinder.<name>
 - **Theme** — Classic/Liquid Glass style, the four glass palettes, and appearance (below).
 - **Types** — Current or original Gen I assignments. Current is the default; Gen I removes later
   Steel/Fairy changes from the seven affected Pokémon.
-- **Notion** — Connect/Disconnect, live status, workspace name, and the database id field. The binder
-  renders fully with or without Notion, so this section is genuinely optional. A connection persists
-  and reloads on launch.
+- **Notion** — Connect/Disconnect, live status, workspace name, the database id field, and the
+  refresh interval (`Manual`, `1`, `3`, `5`, `8`, or a custom whole-minute value). Automatic
+  refresh runs only while the app is open and active; changing the interval restarts the timer.
+  Becoming active again catches up if an interval is due. Manual mode schedules nothing. The
+  bottom-left resync button is always on the main window (binder and grid, every interval) and
+  runs the same pull-and-flush immediately. It is disabled only when Notion is disconnected or a
+  sync is already running. The binder renders fully with or without Notion, so this section is
+  genuinely optional. A connection persists and reloads on launch.
 - **About** — binder size (`19 pages · 151 Pokémon`), artwork source, and type-icon credit.
 
 ### Appearance
@@ -392,6 +419,7 @@ without asking.**
 | **macOS 26 only** | See §2 — a fallback for 14/15 could never be tested here. |
 | **Grid segment live, landing on "Coming soon"** | Better than a disabled control that gives no feedback. |
 | **Notion is optional** | The binder is fully usable offline; Notion adds ownership sync, it isn't a prerequisite. |
+| **Queued Notion writes, local pending wins** | Toggles stay instant in the UI. Remote I/O waits for the next interval or the always-visible resync. A queued app edit beats a conflicting Notion value for that Pokédex number. |
 
 ## 9. Not in scope
 
