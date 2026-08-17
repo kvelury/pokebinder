@@ -77,15 +77,28 @@ enum ArtworkImageCache {
 }
 
 /// The artwork inside one pocket.
+///
+/// The cache is read while the body is being built, not from `.task`. `.task` only
+/// runs *after* the first render, so a pocket handed a dex it already has art for
+/// still drew one empty frame and then popped the image in — eight of those at once
+/// is the flash of a page refreshing itself right after a turn lands.
+@MainActor
 struct CardArtworkView: View {
     let dexNumber: Int
 
-    @State private var image: NSImage?
+    /// Art this view fetched itself, tagged with the dex it belongs to so that a
+    /// pocket handed a new number never shows the previous one's image.
+    @State private var fetched: FetchedArtwork?
+
+    private var artwork: NSImage? {
+        if let fetched, fetched.dex == dexNumber { return fetched.image }
+        return ArtworkImageCache.image(for: dexNumber)
+    }
 
     var body: some View {
         Group {
-            if let image {
-                Image(nsImage: image)
+            if let artwork {
+                Image(nsImage: artwork)
                     .resizable()
                     .interpolation(.high)
                     .aspectRatio(contentMode: .fit)
@@ -99,15 +112,19 @@ struct CardArtworkView: View {
     }
 
     private func load() async {
-        if let cached = ArtworkImageCache.image(for: dexNumber) {
-            image = cached
-            return
-        }
-        image = nil
+        // Already on screen from the cache — nothing to fetch, and nothing to fade.
+        guard artwork == nil else { return }
         guard let data = await ArtworkStore.shared.data(for: dexNumber),
               let decoded = NSImage(data: data)
         else { return }
         ArtworkImageCache.store(decoded, for: dexNumber)
-        withAnimation(.easeOut(duration: 0.18)) { image = decoded }
+        withAnimation(.easeOut(duration: 0.18)) {
+            fetched = FetchedArtwork(dex: dexNumber, image: decoded)
+        }
     }
+}
+
+private struct FetchedArtwork {
+    let dex: Int
+    let image: NSImage
 }

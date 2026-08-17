@@ -43,19 +43,13 @@ struct BinderView: View {
             )
             let metrics = BinderMetrics.fitting(available)
 
-            ZStack {
-                if isTurning && !reduceMotion {
-                    PageTurnComposite(
-                        fromPage: fromPage,
-                        toPage: toPage,
-                        angle: angle,
-                        metrics: metrics,
-                        selectedDex: $selectedDex
-                    )
-                } else {
-                    BinderSpread(page: binder.currentPage, metrics: metrics, selectedDex: $selectedDex)
-                }
-            }
+            BinderStack(
+                fromPage: fromPage,
+                toPage: toPage,
+                angle: reduceMotion ? 0 : angle,
+                metrics: metrics,
+                selectedDex: $selectedDex
+            )
             .frame(width: metrics.totalWidth, height: metrics.totalHeight)
             .frame(width: geo.size.width, height: geo.size.height - bottomInset + outerInset, alignment: .center)
             .overlay {
@@ -348,9 +342,16 @@ private struct TrackpadScrollEvent {
     var isPrecise: Bool
 }
 
-// MARK: - 3D composite
+// MARK: - The binder
 
-/// The spread mid-turn: one leaf standing up off the rings, everything else lying flat.
+/// The whole binder, at rest and mid-turn alike: cover, both pages, the ring
+/// hardware — plus, while a turn is in flight, the leaf standing up off the rings.
+///
+/// One view for both states on purpose. Swapping between a "turning" view and a
+/// "settled" view handed every pocket a new identity the instant the turn ended, so
+/// the page you had just landed on tore itself down and rebuilt itself — the quick
+/// refresh you could see on the left side. Here the flat pages are the same views
+/// from the first frame of a turn to the last; only the leaf comes and goes.
 ///
 /// The flat layer is *not* a single spread. A turning leaf only uncovers the side it
 /// lifts off; the side it is falling toward keeps showing the page that is already
@@ -360,13 +361,14 @@ private struct TrackpadScrollEvent {
 /// Z-order, back to front: cover plate, the flat pages, the turning leaf, the rings.
 /// The leaf rides *over* the cover's border, clipped to the binder's outer edge so it
 /// can never spill onto the desk.
-private struct PageTurnComposite: View {
+struct BinderStack: View {
     let fromPage: Int
     let toPage: Int
     let angle: Double
     let metrics: BinderMetrics
     @Binding var selectedDex: Int?
 
+    private var isTurning: Bool { abs(angle) > 0.5 || fromPage != toPage }
     private var showingFront: Bool { abs(angle) < 90 }
 
     /// Negative angle = right leaf flipping left (higher page). At rest, the destination
@@ -393,14 +395,20 @@ private struct PageTurnComposite: View {
 
     var body: some View {
         ZStack {
-            BinderCover(metrics: metrics, castsShadow: true)
+            BinderCover(metrics: metrics)
 
             ZStack {
                 flatPages
                     .zIndex(0)
 
-                turningLeaf
-                    .zIndex(1)
+                if isTurning {
+                    turningLeaf
+                        // No fade on the way in or out. The leaf appears flat on top of
+                        // the page it is lifting off and lands flat on the page it is
+                        // covering, so both hand-offs are already pixel-identical.
+                        .transition(.identity)
+                        .zIndex(1)
+                }
 
                 SpineView(metrics: metrics)
                     .zIndex(2)
@@ -409,9 +417,10 @@ private struct PageTurnComposite: View {
             .clipShape(
                 RoundedRectangle(cornerRadius: metrics.coverCornerRadius, style: .continuous)
             )
+            // A leaf in flight must not swallow clicks meant for the pockets it passes over.
+            .allowsHitTesting(!isTurning)
         }
         .frame(width: metrics.totalWidth, height: metrics.totalHeight)
-        .allowsHitTesting(false)
     }
 
     /// Both pages lying flat under the leaf.
@@ -527,11 +536,9 @@ private struct PageTurnComposite: View {
 
 // MARK: - Cover
 
-/// The binder's outer plate. Shared by the idle spread and the turning composite
-/// so the cover does not change identity when a turn starts.
+/// The binder's outer plate — the object the pages sit inside.
 private struct BinderCover: View {
     let metrics: BinderMetrics
-    var castsShadow: Bool = true
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: metrics.coverCornerRadius, style: .continuous)
@@ -554,29 +561,10 @@ private struct BinderCover: View {
                 )
             )
             .shadow(
-                color: .black.opacity(castsShadow ? 0.35 : 0),
+                color: .black.opacity(0.35),
                 radius: metrics.cardWidth * 0.16,
                 y: metrics.cardWidth * 0.06
             )
-    }
-}
-
-/// One complete open spread. Isolated so a turn can keep two in play — the idle
-/// path uses this as-is; the turning path composites the same pieces around the rings.
-struct BinderSpread: View {
-    let page: Int
-    let metrics: BinderMetrics
-    @Binding var selectedDex: Int?
-
-    var body: some View {
-        ZStack {
-            BinderCover(metrics: metrics)
-            HStack(spacing: 0) {
-                PageSideView(page: page, side: .left, metrics: metrics, selectedDex: $selectedDex)
-                SpineView(metrics: metrics)
-                PageSideView(page: page, side: .right, metrics: metrics, selectedDex: $selectedDex)
-            }
-        }
     }
 }
 
