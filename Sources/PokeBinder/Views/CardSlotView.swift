@@ -13,6 +13,7 @@ struct CardSlotView: View {
     let emphasis: SlotEmphasis
     @Binding var selection: CardSelection?
 
+    @AppStorage(AppSettings.typeEraKey) private var typeEra: TypeEra = .current
     @State private var isHovering = false
     /// The pocket's own frame, kept current so a tap can hand it to the overlay.
     @State private var frameInContent: CGRect = .zero
@@ -88,6 +89,14 @@ struct CardSlotView: View {
                     .padding(.top, metrics.cardWidth * 0.16)
                 numberBadge(dex: dex)
                     .padding(metrics.cardWidth * 0.05)
+                TypeIconGroup(
+                    types: Pokedex.types(for: dex, era: typeEra),
+                    size: max(10, metrics.cardWidth * 0.14),
+                    spacing: metrics.cardWidth * 0.018,
+                    isMuted: !isOwned
+                )
+                .padding(metrics.cardWidth * 0.05)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
             }
             Text(Pokedex.name(for: dex))
                 .font(Theme.nameFont(size: metrics.cardWidth * 0.108))
@@ -150,6 +159,8 @@ struct CardSlotView: View {
 
     private var accessibilityLabel: String {
         guard let dex = slot.dexNumber else { return "Empty pocket" }
-        return "\(Pokedex.name(for: dex)), number \(dex), \(isOwned ? "owned" : "missing")"
+        let typeNames = Pokedex.types(for: dex, era: typeEra).map(\.title)
+            .joined(separator: " and ")
+        return "\(Pokedex.name(for: dex)), number \(dex), \(typeNames) type, \(isOwned ? "owned" : "missing")"
     }
 }

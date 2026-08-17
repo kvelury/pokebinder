@@ -38,6 +38,14 @@ cp Resources/Info.plist "$APP/Contents/Info.plist"
 # Info.plist points CFBundleIconFile at this name; regenerate it with
 # Resources/AppIcon/make-icon.swift if the artwork changes.
 cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
+# Preserve SwiftPM's generated bundle name. `TypeIconAssets` checks the app's
+# Resources directory first, then falls back to Bundle.module for package builds.
+RESOURCE_BUNDLE=.build/release/PokeBinder_PokeBinder.bundle
+if [ ! -d "$RESOURCE_BUNDLE" ]; then
+    echo "Missing SwiftPM resource bundle: $RESOURCE_BUNDLE" >&2
+    exit 1
+fi
+cp -R "$RESOURCE_BUNDLE" "$APP/Contents/Resources/PokeBinder_PokeBinder.bundle"
 
 echo "==> Signing (ad-hoc)…"
 codesign --force --sign - "$APP"

@@ -16,6 +16,7 @@ struct CardDetailPanel: View {
     let onClose: () -> Void
 
     @EnvironmentObject private var collection: CollectionStore
+    @AppStorage(AppSettings.typeEraKey) private var typeEra: TypeEra = .current
 
     var body: some View {
         VStack(spacing: 16) {
@@ -29,9 +30,21 @@ struct CardDetailPanel: View {
                 Text(Pokedex.name(for: dexNumber))
                     .font(Theme.nameFont(size: 22))
                     .foregroundStyle(Theme.textPrimary)
-                Text("#\(Pokedex.formattedNumber(dexNumber))")
-                    .font(Theme.numberFont(size: 14))
-                    .foregroundStyle(Theme.textSecondary)
+                HStack(spacing: 11) {
+                    Text("#\(Pokedex.formattedNumber(dexNumber))")
+                        .font(Theme.numberFont(size: 14))
+                        .foregroundStyle(Theme.textSecondary)
+
+                    Divider()
+                        .frame(height: 20)
+
+                    TypeIconGroup(
+                        types: Pokedex.types(for: dexNumber, era: typeEra),
+                        size: 24,
+                        spacing: 5,
+                        isMuted: !isOwned
+                    )
+                }
             }
 
             Divider()

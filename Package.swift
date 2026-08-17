@@ -7,7 +7,10 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "PokeBinder",
-            path: "Sources/PokeBinder"
+            path: "Sources/PokeBinder",
+            resources: [
+                .copy("Resources/TypeIcons")
+            ]
         )
     ]
 )
