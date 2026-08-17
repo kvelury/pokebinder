@@ -18,7 +18,12 @@ final class HoverTooltipModel: ObservableObject {
     private var pendingTask: Task<Void, Never>?
     private var pendingID: UUID?
 
-    func schedule(id: UUID, content: HoverTooltipContent, targetFrame: CGRect) {
+    func schedule(
+        id: UUID,
+        content: HoverTooltipContent,
+        targetFrame: CGRect,
+        animation: Animation?
+    ) {
         pendingTask?.cancel()
         pendingID = id
 
@@ -31,7 +36,7 @@ final class HoverTooltipModel: ObservableObject {
         pendingTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: 250_000_000)
             guard !Task.isCancelled, let self else { return }
-            withAnimation(.easeOut(duration: 0.12)) {
+            withAnimation(animation) {
                 self.presentation = HoverTooltipPresentation(
                     id: id,
                     content: content,
@@ -48,14 +53,14 @@ final class HoverTooltipModel: ObservableObject {
         presentation?.targetFrame = targetFrame
     }
 
-    func dismiss(id: UUID) {
+    func dismiss(id: UUID, animation: Animation?) {
         if pendingID == id {
             pendingTask?.cancel()
             pendingTask = nil
             pendingID = nil
         }
         guard presentation?.id == id else { return }
-        withAnimation(.easeOut(duration: 0.08)) {
+        withAnimation(animation) {
             presentation = nil
         }
     }
@@ -65,6 +70,7 @@ private struct HoverTooltipModifier: ViewModifier {
     let content: HoverTooltipContent
 
     @EnvironmentObject private var model: HoverTooltipModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var id = UUID()
     @State private var targetFrame: CGRect = .zero
     @State private var isHovering = false
@@ -82,14 +88,23 @@ private struct HoverTooltipModifier: ViewModifier {
             .onHover { hovering in
                 isHovering = hovering
                 if hovering {
-                    model.schedule(id: id, content: content, targetFrame: targetFrame)
+                    model.schedule(
+                        id: id,
+                        content: content,
+                        targetFrame: targetFrame,
+                        animation: motion
+                    )
                 } else {
-                    model.dismiss(id: id)
+                    model.dismiss(id: id, animation: motion)
                 }
             }
             .onDisappear {
-                model.dismiss(id: id)
+                model.dismiss(id: id, animation: motion)
             }
+    }
+
+    private var motion: Animation? {
+        AppMotion.respectingReduceMotion(AppMotion.quick, reduceMotion: reduceMotion)
     }
 }
 

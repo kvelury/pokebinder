@@ -12,6 +12,7 @@ private enum Chrome {
 
 struct ContentView: View {
     @Environment(\.appTheme) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @StateObject private var binder = BinderState()
     @StateObject private var collection = CollectionStore()
     @StateObject private var notion = NotionManager()
@@ -41,16 +42,7 @@ struct ContentView: View {
                 }
             }
 
-            if let selection {
-                GeometryReader { geo in
-                    CardZoomOverlay(
-                        selection: selection,
-                        containerSize: geo.size,
-                        onDismissed: { self.selection = nil }
-                    )
-                }
-                .transition(.opacity)
-            }
+            CardZoomOverlay(selection: $selection)
 
             toolbarDivider
             keyboardShortcuts
@@ -87,7 +79,9 @@ struct ContentView: View {
                 .environmentObject(collection)
                 .environmentObject(notion)
         }
-        .onChange(of: binder.viewMode) { _, _ in selection = nil }
+        .onChange(of: binder.viewMode) { _, _ in
+            withAnimation(cardDetailMotion) { selection = nil }
+        }
         .task {
             if notion.isConnected {
                 await collection.use(NotionOwnershipBackend(manager: notion))
@@ -243,7 +237,7 @@ struct ContentView: View {
             .buttonStyle(.plain)
             .pillChrome(in: Capsule(), active: isActive, interactive: true)
             .help(mode.title)
-            .animation(.easeOut(duration: 0.15), value: isActive)
+            .animation(controlMotion, value: isActive)
         } else {
             Button {
                 binder.viewMode = mode
@@ -255,8 +249,16 @@ struct ContentView: View {
             }
             .buttonStyle(.plain)
             .help(mode.title)
-            .animation(.easeOut(duration: 0.15), value: isActive)
+            .animation(controlMotion, value: isActive)
         }
+    }
+
+    private var controlMotion: Animation? {
+        AppMotion.respectingReduceMotion(AppMotion.quick, reduceMotion: reduceMotion)
+    }
+
+    private var cardDetailMotion: Animation {
+        reduceMotion ? AppMotion.quick : AppMotion.cardDetail
     }
 
     /// One wide pill holding icon, field, match counter and clear button. Search gets

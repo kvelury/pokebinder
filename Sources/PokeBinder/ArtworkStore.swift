@@ -86,6 +86,7 @@ enum ArtworkImageCache {
 struct CardArtworkView: View {
     let dexNumber: Int
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Art this view fetched itself, tagged with the dex it belongs to so that a
     /// pocket handed a new number never shows the previous one's image.
     @State private var fetched: FetchedArtwork?
@@ -118,7 +119,11 @@ struct CardArtworkView: View {
               let decoded = NSImage(data: data)
         else { return }
         ArtworkImageCache.store(decoded, for: dexNumber)
-        withAnimation(.easeOut(duration: 0.18)) {
+        let animation = AppMotion.respectingReduceMotion(
+            AppMotion.feedback,
+            reduceMotion: reduceMotion
+        )
+        withAnimation(animation) {
             fetched = FetchedArtwork(dex: dexNumber, image: decoded)
         }
     }

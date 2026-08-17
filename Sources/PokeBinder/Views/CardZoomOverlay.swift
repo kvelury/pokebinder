@@ -1,70 +1,59 @@
 import SwiftUI
 
-private enum CardZoom {
-    static let pop = Animation.spring(response: 0.34, dampingFraction: 0.82)
-    static let reduced = Animation.easeOut(duration: 0.14)
-    /// The panel's fixed width, from `CardDetailPanel.width`.
-    static let panelWidth: CGFloat = CardDetailPanel.width
-}
-
-/// The clicked card, lifted out of its pocket and brought to the middle.
-///
-/// Not a `matchedGeometryEffect`: `BinderStack` renders the same pocket twice
-/// during a page turn (flat page + turning leaf), which would give one namespace
-/// two sources for the same id. The pocket's frame is captured at tap time
-/// instead — a plain `CGRect`, immune to the leaf's 3D transform.
-///
-/// Presentation and dismissal are both driven by `presented`, and the view only
-/// leaves the hierarchy in the dismiss animation's completion, so the panel
-/// actually plays its way back into the pocket instead of blinking out.
+/// The selected card's detail panel, quickly animated from its pocket to the window centre.
 struct CardZoomOverlay: View {
-    let selection: CardSelection
-    /// Size of the content area — the coordinate space `sourceRect` was measured in.
-    let containerSize: CGSize
-    let onDismissed: () -> Void
+    @Binding var selection: CardSelection?
 
     @Environment(\.appTheme) private var theme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    @State private var presented = false
 
-    private var animation: Animation { reduceMotion ? CardZoom.reduced : CardZoom.pop }
-
-    private var sourceCentre: CGPoint {
-        CGPoint(x: selection.sourceRect.midX, y: selection.sourceRect.midY)
-    }
-
-    private var centre: CGPoint {
-        CGPoint(x: containerSize.width / 2, y: containerSize.height / 2)
-    }
-
-    /// The pocket's width as a fraction of the panel's, so the panel starts out
-    /// the size of the hole it came from.
-    private var startScale: CGFloat {
-        max(0.05, selection.sourceRect.width / CardZoom.panelWidth)
+    private var animation: Animation {
+        reduceMotion ? AppMotion.quick : AppMotion.cardDetail
     }
 
     var body: some View {
-        ZStack {
-            scrim
-            panel
+        GeometryReader { geo in
+            ZStack {
+                if selection != nil {
+                    scrim
+                        .transition(.opacity)
+                }
+
+                if let selection {
+                    CardDetailPanel(dexNumber: selection.dexNumber, onClose: dismiss)
+                        .position(x: geo.size.width / 2, y: geo.size.height / 2)
+                        .transition(panelTransition(for: selection, in: geo.size))
+                }
+            }
+            .frame(width: geo.size.width, height: geo.size.height)
+            .background {
+                if selection != nil {
+                    escapeKey
+                }
+            }
+            .allowsHitTesting(selection != nil)
         }
-        .onAppear { withAnimation(animation) { presented = true } }
-        .background(escapeKey)
     }
 
     private var scrim: some View {
         (theme.isLiquidGlass && !reduceTransparency ? theme.modalScrim : Color.black.opacity(0.45))
-            .opacity(presented ? 1 : 0)
             .contentShape(Rectangle())
             .onTapGesture { dismiss() }
     }
 
-    private var panel: some View {
-        CardDetailPanel(dexNumber: selection.dexNumber, onClose: dismiss)
-            .scaleEffect(reduceMotion ? 1 : (presented ? 1 : startScale), anchor: .center)
-            .position(reduceMotion ? centre : (presented ? centre : sourceCentre))
-            .opacity(presented ? 1 : 0)
+    private func panelTransition(for selection: CardSelection, in containerSize: CGSize) -> AnyTransition {
+        if reduceMotion {
+            return .opacity
+        }
+
+        let centre = CGPoint(x: containerSize.width / 2, y: containerSize.height / 2)
+        let startScale = max(0.05, selection.sourceRect.width / CardDetailPanel.width)
+        return .scale(scale: startScale)
+            .combined(with: .offset(
+                x: selection.sourceRect.midX - centre.x,
+                y: selection.sourceRect.midY - centre.y
+            ))
     }
 
     /// Esc, scoped to the overlay's lifetime — a permanently installed escape
@@ -79,10 +68,8 @@ struct CardZoomOverlay: View {
     }
 
     private func dismiss() {
-        withAnimation(animation, completionCriteria: .logicallyComplete) {
-            presented = false
-        } completion: {
-            onDismissed()
+        withAnimation(animation) {
+            selection = nil
         }
     }
 }

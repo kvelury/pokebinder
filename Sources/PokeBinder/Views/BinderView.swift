@@ -67,8 +67,8 @@ struct BinderView: View {
             toPage = binder.currentPage
         }
         .onChange(of: binder.currentPage) { _, newValue in
-            if selection != nil {
-                withAnimation(.easeOut(duration: 0.16)) { selection = nil }
+            withAnimation(reduceMotion ? AppMotion.quick : AppMotion.cardDetail) {
+                selection = nil
             }
             if ignorePageChange == newValue {
                 ignorePageChange = nil
@@ -129,7 +129,10 @@ struct BinderView: View {
     private func animateAngle(to target: Double) {
         turnGeneration += 1
         let generation = turnGeneration
-        let remaining = max(0.12, PageTurn.duration * (1 - abs(angle) / 180))
+        let remaining = max(
+            AppMotion.pageTurnMinimumDuration,
+            AppMotion.pageTurnDuration * (1 - abs(angle) / 180)
+        )
         withAnimation(.easeInOut(duration: remaining), completionCriteria: .logicallyComplete) {
             angle = target
         } completion: {
@@ -292,7 +295,10 @@ struct BinderView: View {
             let target: Double = session.isForward ? -180 : 180
             turnGeneration += 1
             let generation = turnGeneration
-            let remaining = max(0.12, PageTurn.duration * (1 - progress))
+            let remaining = max(
+                AppMotion.pageTurnMinimumDuration,
+                AppMotion.pageTurnDuration * (1 - progress)
+            )
             withAnimation(.easeInOut(duration: remaining), completionCriteria: .logicallyComplete) {
                 angle = target
             } completion: {
@@ -305,7 +311,7 @@ struct BinderView: View {
             toPage = origin
             turnGeneration += 1
             let generation = turnGeneration
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.86), completionCriteria: .logicallyComplete) {
+            withAnimation(AppMotion.pageTurnSnapBack, completionCriteria: .logicallyComplete) {
                 angle = 0
             } completion: {
                 guard generation == turnGeneration else { return }
@@ -323,7 +329,6 @@ struct BinderView: View {
 }
 
 private enum PageTurn {
-    static let duration: TimeInterval = 0.45
     /// Deliberately shallow. A strong vanishing point fans the leaf's outer edge to
     /// several times its real height at 90°, so the turning page reads as bigger than
     /// the binder holding it. See `leafScale` for the rest of that correction.
