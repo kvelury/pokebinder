@@ -50,16 +50,6 @@ struct CardDetailPanel: View {
 
             Divider()
 
-            HStack {
-                Label("Page \(Pokedex.page(for: dexNumber))", systemImage: "book.closed")
-                Spacer()
-                Text("Slot \(Pokedex.absolutePosition(for: dexNumber)) of \(Pokedex.slotsPerPage)")
-            }
-            .font(.caption)
-            .foregroundStyle(theme.textSecondary)
-
-            Divider()
-
             Toggle("Owned", isOn: ownedBinding)
                 .toggleStyle(.switch)
                 .tint(theme.brass)
@@ -78,29 +68,50 @@ struct CardDetailPanel: View {
             cornerRadius: theme.isLiquidGlass ? 24 : 16,
             style: .continuous
         ))
+        .overlay(alignment: .topLeading) {
+            pageIndicator
+                .padding(10)
+        }
         .overlay(alignment: .topTrailing) {
             closeButton
-            .padding(10)
+                .padding(10)
         }
+    }
+
+    private var pageDetailsLabel: String {
+        "Page \(Pokedex.page(for: dexNumber)) · Slot \(Pokedex.absolutePosition(for: dexNumber)) of \(Pokedex.slotsPerPage)"
+    }
+
+    @ViewBuilder
+    private var pageIndicator: some View {
+        cornerGlyph("book.closed")
+            .hoverTooltip(pageDetailsLabel)
+            .accessibilityLabel(pageDetailsLabel)
     }
 
     @ViewBuilder
     private var closeButton: some View {
-        let button = Button(action: onClose) {
-            Image(systemName: "xmark")
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(theme.textSecondary)
-                .frame(width: 22, height: 22)
-                .contentShape(Circle())
+        Button(action: onClose) {
+            cornerGlyph("xmark")
         }
         .buttonStyle(.plain)
         .help("Close")
         .accessibilityLabel("Close")
+    }
 
-        if theme.isLiquidGlass {
-            button
-        } else {
-            button.pillChrome(in: Circle(), interactive: true)
+    private func cornerGlyph(_ systemName: String) -> some View {
+        let glyph = Image(systemName: systemName)
+            .font(.system(size: 10, weight: .bold))
+            .foregroundStyle(theme.textSecondary)
+            .frame(width: 22, height: 22)
+            .contentShape(Circle())
+
+        return Group {
+            if theme.isLiquidGlass {
+                glyph
+            } else {
+                glyph.pillChrome(in: Circle(), interactive: true)
+            }
         }
     }
 
