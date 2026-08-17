@@ -9,6 +9,7 @@ struct PagerBar: View {
     @EnvironmentObject private var binder: BinderState
 
     @State private var pageText: String = "1"
+    @State private var isEditingPage = false
     @FocusState private var fieldFocused: Bool
 
     var body: some View {
@@ -59,14 +60,24 @@ struct PagerBar: View {
 
     private var pageField: some View {
         HStack(spacing: 5) {
-            TextField("", text: $pageText)
-                .textFieldStyle(.plain)
-                .multilineTextAlignment(.trailing)
-                .font(Theme.numberFont(size: 15))
-                .foregroundStyle(Theme.textPrimary)
-                .frame(width: 28)
-                .focused($fieldFocused)
-                .onSubmit(commit)
+            Group {
+                if isEditingPage {
+                    TextField("", text: $pageText)
+                        .textFieldStyle(.plain)
+                        .multilineTextAlignment(.trailing)
+                        .focused($fieldFocused)
+                        // Focus has to wait for the field to exist — setting it in the tap
+                        // handler lands before SwiftUI has installed the NSTextField.
+                        .onAppear { fieldFocused = true }
+                        .onSubmit { commit(); isEditingPage = false }
+                } else {
+                    Text(pageText)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                }
+            }
+            .font(Theme.numberFont(size: 15))
+            .foregroundStyle(Theme.textPrimary)
+            .frame(width: 28)
 
             Text("/ \(Pokedex.pageCount)")
                 .font(Theme.numberFont(size: 15))
@@ -75,11 +86,26 @@ struct PagerBar: View {
         .padding(.horizontal, 16)
         .frame(height: 36)
         .floatingPill(in: Capsule())
-        .help("Type a page number and press Return")
+        // An idle-only hit target rather than a guarded .onTapGesture on the pill: a parent
+        // tap gesture sitting over a live TextField steals the clicks that place the caret.
+        .overlay {
+            if !isEditingPage {
+                Capsule()
+                    .fill(.clear)
+                    .contentShape(Capsule())
+                    .onTapGesture { isEditingPage = true }
+            }
+        }
+        .help("Click the page number and press Return")
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Page \(binder.currentPage) of \(Pokedex.pageCount)")
         .onChange(of: fieldFocused) { _, focused in
             // Leaving the field without pressing Return should not silently keep a
             // half-typed value on screen.
-            if !focused { commit() }
+            if !focused && isEditingPage {
+                commit()
+                isEditingPage = false
+            }
         }
     }
 

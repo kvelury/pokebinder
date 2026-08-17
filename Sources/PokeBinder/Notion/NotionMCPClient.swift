@@ -90,7 +90,7 @@ final class NotionMCPClient {
                 "protocolVersion": "2025-06-18",
                 "capabilities": [:],
                 "clientInfo": [
-                    "name": "PokeBinder",
+                    "name": "PokéBinder",
                     "version": Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.1",
                 ],
             ],

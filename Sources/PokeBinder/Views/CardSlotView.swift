@@ -69,10 +69,19 @@ struct CardSlotView: View {
             ZStack(alignment: .topLeading) {
                 Color.clear
                 CardArtworkView(dexNumber: dex)
-                    .padding(.horizontal, metrics.cardWidth * 0.07)
-                    .padding(.top, metrics.cardWidth * 0.06)
                     .saturation(isOwned ? 1 : 0)
                     .opacity(isOwned ? 1 : 0.45)
+                    .padding(.horizontal, metrics.cardWidth * 0.07)
+                    .padding(.vertical, metrics.cardWidth * 0.06)
+                    // The art is square but the pocket is not, so a top-aligned image leaves all of
+                    // its slack under the art and reads as sitting too high. Filling the region and
+                    // letting the frame centre it puts the art in the middle of the space it
+                    // actually has, without moving the badge off the corner.
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    // The name sits below this ZStack, so a true center in the remaining
+                    // region still reads high on the card. Insetting from the top recentres
+                    // in the space between the badge and the name, without shrinking the art.
+                    .padding(.top, metrics.cardWidth * 0.16)
                 numberBadge(dex: dex)
                     .padding(metrics.cardWidth * 0.05)
             }

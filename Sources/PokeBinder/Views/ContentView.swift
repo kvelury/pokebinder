@@ -88,8 +88,9 @@ struct ContentView: View {
     // search taking the whole middle, one action at the right.
     //
     // No `if #available` may appear inside this builder: ToolbarContentBuilder's
-    // buildLimitedAvailability is macOS 14.5+, and we target 14.0, so it would
-    // resolve to the obsoleted overload. Nothing here needs one.
+    // buildLimitedAvailability is macOS 14.5+, so below that it resolves to the
+    // obsoleted overload. We now target 26, so nothing here needs a branch —
+    // keep the rule anyway.
     //
     // Everything here draws its own flat pill via `.pillChrome`. `.buttonStyle(.plain)`
     // is what keeps macOS 26 from adding Liquid Glass of its own underneath — drop it
@@ -107,6 +108,10 @@ struct ContentView: View {
         ToolbarItem(placement: .principal) {
             searchField
         }
+        // macOS 26 wraps a toolbar item in a 36pt container of its own — a second capsule
+        // 3pt outside ours. `.buttonStyle(.plain)` is what stops that on the icon buttons,
+        // but it does not apply to a TextField, so the search pill needs this instead.
+        .sharedBackgroundVisibility(.hidden)
 
         ToolbarItem(placement: .primaryAction) {
             Button {
@@ -178,7 +183,7 @@ struct ContentView: View {
         }
         .padding(.horizontal, 12)
         .frame(width: 380, height: 30)
-        .pillChrome(in: Capsule())
+        .pillChrome(in: Capsule(), stroked: false)
     }
 
     /// Zero-sized buttons purely to carry key equivalents. `.hidden()` would take

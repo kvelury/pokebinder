@@ -1,7 +1,13 @@
-# PokeBinder — Design Doc
+# PokéBinder — Design Doc
 
 Single source of truth for this project: the plan and the handoff, copied verbatim.
-Part 1 is built; parts 2 and 3 are open.
+
+> **⚠️ This file is stale. `handoff.md` is current — read that instead.** Parts 1, 2 and 3 are all
+> built and merged; part 4 (UI polish: the `PokéBinder` rename, centred card art, both of the search
+> field's outlines, and the page field's launch focus) is the only open work, and it exists only in
+> `handoff.md` §12. Part 4 also **raises the deployment target to macOS 26** — wherever this doc says
+> macOS 14, `handoff.md` §2 and §12.3 supersede it. Kept for the original plan's reasoning, not its
+> status.
 
 > **Amendment — the chrome was reworked after part 1.** The Liquid Glass chrome described below was
 > replaced by flat pills at the user's request: `GlassChrome.swift` → `PillChrome.swift`, a wide search
