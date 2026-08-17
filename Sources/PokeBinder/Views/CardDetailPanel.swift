@@ -68,13 +68,13 @@ struct CardDetailPanel: View {
             cornerRadius: theme.isLiquidGlass ? 24 : 16,
             style: .continuous
         ))
-        .overlay {
-            HStack {
-                pageIndicator
-                Spacer()
-                closeButton
-            }
-            .padding(10)
+        .overlay(alignment: .topLeading) {
+            pageIndicator
+                .padding(10)
+        }
+        .overlay(alignment: .topTrailing) {
+            closeButton
+                .padding(10)
         }
     }
 
