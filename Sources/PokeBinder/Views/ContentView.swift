@@ -1,5 +1,13 @@
 import SwiftUI
 
+/// Toolbar sizing, in one place so the icon buttons and the search field stay the
+/// same height as each other. They are the only things in the bar, so anything
+/// shorter than the search pill leaves the icons swimming in empty bar.
+private enum Chrome {
+    static let toolbarControlHeight: CGFloat = 30
+    static let toolbarIcon: CGFloat = 16
+}
+
 struct ContentView: View {
     @StateObject private var binder = BinderState()
     @StateObject private var collection = CollectionStore()
@@ -33,6 +41,11 @@ struct ContentView: View {
         .environmentObject(collection)
         .environmentObject(notion)
         .toolbar { toolbarContent }
+        // The app's name is already in the menu bar; a second copy of it between the
+        // view tabs and the search field is just noise. `titleVisibility = .hidden` on
+        // the NSWindow no longer covers this — a unified toolbar draws the title as a
+        // toolbar item of its own, so it has to be removed as one.
+        .toolbar(removing: .title)
         // A flat, opaque bar. Without this the titlebar stays translucent and the
         // desktop behind the window shows through along the top edge.
         .toolbarBackground(Theme.chrome, for: .windowToolbar)
@@ -122,14 +135,18 @@ struct ContentView: View {
                 showSettings = true
             } label: {
                 Image(systemName: "gearshape")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: Chrome.toolbarIcon, weight: .medium))
                     .foregroundStyle(Theme.textSecondary)
-                    .frame(width: 30, height: 26)
+                    .frame(width: 32, height: Chrome.toolbarControlHeight)
                     .contentShape(Capsule())
             }
             .buttonStyle(.plain)
             .help("Settings")
         }
+        // `.buttonStyle(.plain)` is not enough here: a primary-action item still gets
+        // macOS 26's own container drawn around it, which is the ring that appeared
+        // around the gear. Nothing in this bar is outlined unless it is selected.
+        .sharedBackgroundVisibility(.hidden)
     }
 
     /// Icon-only pills. Only the active one takes a fill, which is what makes the pair
@@ -141,9 +158,9 @@ struct ContentView: View {
             binder.viewMode = mode
         } label: {
             Image(systemName: icon)
-                .font(.system(size: 13, weight: .medium))
+                .font(.system(size: Chrome.toolbarIcon, weight: .medium))
                 .foregroundStyle(isActive ? Theme.brass : Theme.textSecondary)
-                .frame(width: 32, height: 26)
+                .frame(width: 36, height: Chrome.toolbarControlHeight)
                 .background(Capsule().fill(isActive ? Theme.controlFillActive : .clear))
                 .overlay(Capsule().strokeBorder(isActive ? Theme.controlStroke : .clear, lineWidth: 1))
                 .contentShape(Capsule())
@@ -186,7 +203,7 @@ struct ContentView: View {
             }
         }
         .padding(.horizontal, 12)
-        .frame(width: 380, height: 30)
+        .frame(width: 380, height: Chrome.toolbarControlHeight)
         .pillChrome(in: Capsule(), stroked: false)
     }
 
