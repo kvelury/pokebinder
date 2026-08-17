@@ -28,7 +28,7 @@ final class NotionAuth {
             case .discoveryFailed(let detail):
                 return "Could not discover Notion's authorization service: \(detail)"
             case .registrationFailed(let detail):
-                return "Could not register PokeBinder with Notion: \(detail)"
+                return "Could not register PokéBinder with Notion: \(detail)"
             case .browserFailed:
                 return "Could not open the browser for Notion authorization."
             case .callbackFailed(let detail):
@@ -202,7 +202,7 @@ final class NotionAuth {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: [
-            "client_name": "PokeBinder",
+            "client_name": "PokéBinder",
             "redirect_uris": Self.callbackPorts.map { "http://127.0.0.1:\($0)/callback" },
             "grant_types": ["authorization_code", "refresh_token"],
             "response_types": ["code"],
@@ -360,17 +360,17 @@ final class LoopbackHTTPServer {
             respond(connection, status: "200 OK", body: "Authorization failed: \(oauthError). You can close this tab.")
             resumeOnce?(.failure(NotionAuth.AuthError.callbackFailed(oauthError)))
         } else if let code, state == expectedState {
-            respond(connection, status: "200 OK", body: "PokeBinder is connected to Notion. You can close this tab and return to the app.")
+            respond(connection, status: "200 OK", body: "PokéBinder is connected to Notion. You can close this tab and return to the app.")
             resumeOnce?(.success(code))
         } else {
-            respond(connection, status: "400 Bad Request", body: "Authorization response was invalid. Return to PokeBinder and try again.")
+            respond(connection, status: "400 Bad Request", body: "Authorization response was invalid. Return to PokéBinder and try again.")
             resumeOnce?(.failure(NotionAuth.AuthError.callbackFailed("missing or mismatched authorization code")))
         }
     }
 
     private func respond(_ connection: NWConnection, status: String, body: String) {
         let html = """
-        <html><head><meta charset="utf-8"><title>PokeBinder</title></head>\
+        <html><head><meta charset="utf-8"><title>PokéBinder</title></head>\
         <body style="font-family: -apple-system, sans-serif; text-align: center; padding-top: 80px;">\
         <h2>\(body)</h2></body></html>
         """

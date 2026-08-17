@@ -17,11 +17,12 @@ struct PillChrome<S: InsettableShape>: ViewModifier {
     let shape: S
     let active: Bool
     let floating: Bool
+    let stroked: Bool
 
     func body(content: Content) -> some View {
         content
             .background(active ? Theme.controlFillActive : Theme.controlFill, in: shape)
-            .overlay(shape.strokeBorder(Theme.controlStroke, lineWidth: 1))
+            .overlay(shape.strokeBorder(stroked ? Theme.controlStroke : .clear, lineWidth: 1))
             .shadow(
                 color: .black.opacity(floating ? 0.18 : 0),
                 radius: floating ? 8 : 0,
@@ -34,12 +35,14 @@ extension View {
     /// A pill sitting on the toolbar. `active` fills it, marking it as the selected
     /// one of a set — the only fill in a group is what makes the group read as a
     /// selection rather than as a row of separate buttons.
-    func pillChrome<S: InsettableShape>(in shape: S, active: Bool = false) -> some View {
-        modifier(PillChrome(shape: shape, active: active, floating: false))
+    /// `stroked: false` for a pill whose fill already carries the shape — the search field,
+    /// where a hairline on top of the fill reads as a second border.
+    func pillChrome<S: InsettableShape>(in shape: S, active: Bool = false, stroked: Bool = true) -> some View {
+        modifier(PillChrome(shape: shape, active: active, floating: false, stroked: stroked))
     }
 
     /// A pill floating over the binder.
     func floatingPill<S: InsettableShape>(in shape: S) -> some View {
-        modifier(PillChrome(shape: shape, active: false, floating: true))
+        modifier(PillChrome(shape: shape, active: false, floating: true, stroked: true))
     }
 }
