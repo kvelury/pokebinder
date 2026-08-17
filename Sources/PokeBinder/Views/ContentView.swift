@@ -5,7 +5,9 @@ import SwiftUI
 /// shorter than the search pill leaves the icons swimming in empty bar.
 private enum Chrome {
     static let toolbarControlHeight: CGFloat = 30
+    /// The square every toolbar glyph is fitted into — see `toolbarIcon`.
     static let toolbarIcon: CGFloat = 16
+    static let toolbarButtonWidth: CGFloat = 36
 }
 
 struct ContentView: View {
@@ -134,10 +136,7 @@ struct ContentView: View {
             Button {
                 showSettings = true
             } label: {
-                Image(systemName: "gearshape")
-                    .font(.system(size: Chrome.toolbarIcon, weight: .medium))
-                    .foregroundStyle(Theme.textSecondary)
-                    .frame(width: 32, height: Chrome.toolbarControlHeight)
+                toolbarIcon("gearshape", tint: Theme.textSecondary)
                     .contentShape(Capsule())
             }
             .buttonStyle(.plain)
@@ -149,6 +148,24 @@ struct ContentView: View {
         .sharedBackgroundVisibility(.hidden)
     }
 
+    /// One recipe for every glyph in the bar, so the three icon buttons are the same
+    /// size as each other and sit on one line.
+    ///
+    /// A shared point size is not enough on its own: SF Symbols do not share a bounding
+    /// box, and at 16pt `gearshape` draws about a third wider than `book.closed`. Fitting
+    /// each glyph into the same square box is what actually makes them match. The button
+    /// frame around it is shared too, so every icon is centred in an identical target
+    /// and the settings button lines up with the view-mode pair across the bar.
+    private func toolbarIcon(_ name: String, tint: Color) -> some View {
+        Image(systemName: name)
+            .resizable()
+            .scaledToFit()
+            .fontWeight(.medium)
+            .foregroundStyle(tint)
+            .frame(width: Chrome.toolbarIcon, height: Chrome.toolbarIcon)
+            .frame(width: Chrome.toolbarButtonWidth, height: Chrome.toolbarControlHeight)
+    }
+
     /// Icon-only pills. Only the active one takes a fill, which is what makes the pair
     /// read as a single selection rather than as two unrelated buttons — the same job
     /// the brass underline used to do, without a second visual language for it.
@@ -157,10 +174,7 @@ struct ContentView: View {
         return Button {
             binder.viewMode = mode
         } label: {
-            Image(systemName: icon)
-                .font(.system(size: Chrome.toolbarIcon, weight: .medium))
-                .foregroundStyle(isActive ? Theme.brass : Theme.textSecondary)
-                .frame(width: 36, height: Chrome.toolbarControlHeight)
+            toolbarIcon(icon, tint: isActive ? Theme.brass : Theme.textSecondary)
                 .background(Capsule().fill(isActive ? Theme.controlFillActive : .clear))
                 .overlay(Capsule().strokeBorder(isActive ? Theme.controlStroke : .clear, lineWidth: 1))
                 .contentShape(Capsule())
