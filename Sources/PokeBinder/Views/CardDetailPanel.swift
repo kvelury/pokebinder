@@ -16,6 +16,7 @@ struct CardDetailPanel: View {
     let onClose: () -> Void
 
     @EnvironmentObject private var collection: CollectionStore
+    @Environment(\.appTheme) private var theme
     @AppStorage(AppSettings.typeEraKey) private var typeEra: TypeEra = .current
 
     var body: some View {
@@ -28,12 +29,12 @@ struct CardDetailPanel: View {
 
             VStack(spacing: 4) {
                 Text(Pokedex.name(for: dexNumber))
-                    .font(Theme.nameFont(size: 22))
-                    .foregroundStyle(Theme.textPrimary)
+                    .font(theme.nameFont(size: 22))
+                    .foregroundStyle(theme.textPrimary)
                 HStack(spacing: 11) {
                     Text("#\(Pokedex.formattedNumber(dexNumber))")
-                        .font(Theme.numberFont(size: 14))
-                        .foregroundStyle(Theme.textSecondary)
+                        .font(theme.numberFont(size: 14))
+                        .foregroundStyle(theme.textSecondary)
 
                     Divider()
                         .frame(height: 20)
@@ -55,14 +56,14 @@ struct CardDetailPanel: View {
                 Text("Slot \(Pokedex.absolutePosition(for: dexNumber)) of \(Pokedex.slotsPerPage)")
             }
             .font(.caption)
-            .foregroundStyle(Theme.textSecondary)
+            .foregroundStyle(theme.textSecondary)
 
             Divider()
 
             Toggle("Owned", isOn: ownedBinding)
                 .toggleStyle(.switch)
-                .tint(Theme.brass)
-                .font(Theme.nameFont(size: 15))
+                .tint(theme.brass)
+                .font(theme.nameFont(size: 15))
 
             if let message = collection.errorMessage {
                 Text(message)
@@ -73,26 +74,33 @@ struct CardDetailPanel: View {
         }
         .padding(24)
         .frame(width: Self.width)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.page)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .strokeBorder(Theme.controlStroke, lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(0.35), radius: 28, y: 12)
+        .panelChrome(in: RoundedRectangle(
+            cornerRadius: theme.isLiquidGlass ? 24 : 16,
+            style: .continuous
+        ))
         .overlay(alignment: .topTrailing) {
-            Button(action: onClose) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(Theme.textSecondary)
-                    .frame(width: 22, height: 22)
-                    .contentShape(Circle())
-            }
-            .buttonStyle(.plain)
-            .pillChrome(in: Circle())
+            closeButton
             .padding(10)
-            .help("Close")
+        }
+    }
+
+    @ViewBuilder
+    private var closeButton: some View {
+        let button = Button(action: onClose) {
+            Image(systemName: "xmark")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(theme.textSecondary)
+                .frame(width: 22, height: 22)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .help("Close")
+        .accessibilityLabel("Close")
+
+        if theme.isLiquidGlass {
+            button
+        } else {
+            button.pillChrome(in: Circle(), interactive: true)
         }
     }
 

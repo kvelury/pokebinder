@@ -13,6 +13,7 @@ struct CardSlotView: View {
     let emphasis: SlotEmphasis
     @Binding var selection: CardSelection?
 
+    @Environment(\.appTheme) private var theme
     @AppStorage(AppSettings.typeEraKey) private var typeEra: TypeEra = .current
     @State private var isHovering = false
     /// The pocket's own frame, kept current so a tap can hand it to the overlay.
@@ -38,7 +39,7 @@ struct CardSlotView: View {
         .opacity(emphasis == .dimmed ? 0.32 : 1)
         .scaleEffect(scale)
         .shadow(
-            color: Theme.brass.opacity(emphasis == .spotlit ? 0.45 : 0),
+            color: theme.brass.opacity(emphasis == .spotlit ? 0.45 : 0),
             radius: metrics.cardWidth * 0.09
         )
         .animation(.easeOut(duration: 0.22), value: emphasis)
@@ -63,7 +64,7 @@ struct CardSlotView: View {
     /// than a flat rectangle.
     private var sleeve: some View {
         shape.fill(
-            Theme.sleeve.shadow(
+            theme.sleeve.shadow(
                 .inner(color: .black.opacity(0.20), radius: metrics.cardWidth * 0.03, y: metrics.cardWidth * 0.012)
             )
         )
@@ -99,8 +100,8 @@ struct CardSlotView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
             }
             Text(Pokedex.name(for: dex))
-                .font(Theme.nameFont(size: metrics.cardWidth * 0.108))
-                .foregroundStyle(isOwned ? Theme.textPrimary : Theme.textSecondary)
+                .font(theme.nameFont(size: metrics.cardWidth * 0.108))
+                .foregroundStyle(isOwned ? theme.textPrimary : theme.textSecondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.55)
                 .padding(.horizontal, metrics.cardWidth * 0.06)
@@ -112,16 +113,16 @@ struct CardSlotView: View {
     /// choosing the corner badge over text laid over the art.
     private func numberBadge(dex: Int) -> some View {
         Text(Pokedex.formattedNumber(dex))
-            .font(Theme.numberFont(size: metrics.cardWidth * 0.088))
-            .foregroundStyle(isOwned ? Theme.brassDeep : Theme.textSecondary)
+            .font(theme.numberFont(size: metrics.cardWidth * 0.088))
+            .foregroundStyle(isOwned ? theme.brassDeep : theme.textSecondary)
             .padding(.horizontal, metrics.cardWidth * 0.052)
             .padding(.vertical, metrics.cardWidth * 0.024)
             .background(
-                Capsule().fill(Theme.page.opacity(isOwned ? 0.92 : 0.62))
+                Capsule().fill(theme.page.opacity(isOwned ? 0.92 : 0.62))
             )
             .overlay(
                 Capsule().strokeBorder(
-                    isOwned ? Theme.brass.opacity(0.5) : Theme.missingOutline.opacity(0.7),
+                    isOwned ? theme.brass.opacity(0.5) : theme.missingOutline.opacity(0.7),
                     lineWidth: 0.75
                 )
             )
@@ -130,20 +131,20 @@ struct CardSlotView: View {
     @ViewBuilder
     private var border: some View {
         if emphasis == .spotlit {
-            shape.strokeBorder(Theme.brass, lineWidth: max(2.5, metrics.cardWidth * 0.02))
+            shape.strokeBorder(theme.brass, lineWidth: max(2.5, metrics.cardWidth * 0.02))
         } else if emphasis == .match {
-            shape.strokeBorder(Theme.brass.opacity(0.55), lineWidth: max(1.5, metrics.cardWidth * 0.012))
+            shape.strokeBorder(theme.brass.opacity(0.55), lineWidth: max(1.5, metrics.cardWidth * 0.012))
         } else if slot.dexNumber == nil {
             // The permanently empty pocket at the end of page 19.
             shape.strokeBorder(
-                Theme.missingOutline.opacity(0.45),
+                theme.missingOutline.opacity(0.45),
                 style: StrokeStyle(lineWidth: 1, dash: [3, 5])
             )
         } else if isOwned {
-            shape.strokeBorder(Theme.brass.opacity(0.8), lineWidth: 1)
+            shape.strokeBorder(theme.brass.opacity(0.8), lineWidth: 1)
         } else {
             shape.strokeBorder(
-                Theme.missingOutline,
+                theme.missingOutline,
                 style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])
             )
         }

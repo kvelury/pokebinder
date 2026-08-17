@@ -7,26 +7,29 @@ import SwiftUI
 /// want to be round — a circle is the honest shape for a single glyph.
 struct PagerBar: View {
     @EnvironmentObject private var binder: BinderState
+    @Environment(\.appTheme) private var theme
 
     @State private var pageText: String = "1"
     @State private var isEditingPage = false
     @FocusState private var fieldFocused: Bool
 
     var body: some View {
-        HStack(spacing: 10) {
-            arrowButton(
-                systemName: "chevron.left",
-                enabled: binder.canGoPrevious,
-                hint: "Previous page"
-            ) { binder.previous() }
+        GlassEffectContainer(spacing: 10) {
+            HStack(spacing: 10) {
+                arrowButton(
+                    systemName: "chevron.left",
+                    enabled: binder.canGoPrevious,
+                    hint: "Previous page"
+                ) { binder.previous() }
 
-            pageField
+                pageField
 
-            arrowButton(
-                systemName: "chevron.right",
-                enabled: binder.canGoNext,
-                hint: "Next page"
-            ) { binder.next() }
+                arrowButton(
+                    systemName: "chevron.right",
+                    enabled: binder.canGoNext,
+                    hint: "Next page"
+                ) { binder.next() }
+            }
         }
         .onAppear { pageText = String(binder.currentPage) }
         .onChange(of: binder.currentPage) { _, newValue in
@@ -47,14 +50,14 @@ struct PagerBar: View {
         Button(action: action) {
             Image(systemName: systemName)
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(Theme.textPrimary)
+                .foregroundStyle(theme.textPrimary)
                 .frame(width: 36, height: 36)
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
         .opacity(enabled ? 1 : 0.3)
-        .floatingPill(in: Circle())
+        .floatingPill(in: Circle(), interactive: true)
         .help(hint)
     }
 
@@ -75,17 +78,17 @@ struct PagerBar: View {
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
             }
-            .font(Theme.numberFont(size: 15))
-            .foregroundStyle(Theme.textPrimary)
+            .font(theme.numberFont(size: 15))
+            .foregroundStyle(theme.textPrimary)
             .frame(width: 28)
 
             Text("/ \(Pokedex.pageCount)")
-                .font(Theme.numberFont(size: 15))
-                .foregroundStyle(Theme.textSecondary)
+                .font(theme.numberFont(size: 15))
+                .foregroundStyle(theme.textSecondary)
         }
         .padding(.horizontal, 16)
         .frame(height: 36)
-        .floatingPill(in: Capsule())
+        .floatingPill(in: Capsule(), interactive: true)
         // An idle-only hit target rather than a guarded .onTapGesture on the pill: a parent
         // tap gesture sitting over a live TextField steals the clicks that place the caret.
         .overlay {
@@ -121,15 +124,16 @@ struct PagerBar: View {
 /// Collected count, sitting opposite the pager on the bottom bar.
 struct CollectedCountPill: View {
     @EnvironmentObject private var collection: CollectionStore
+    @Environment(\.appTheme) private var theme
 
     var body: some View {
         HStack(spacing: 8) {
             Text("\(collection.ownedCount)")
-                .font(Theme.numberFont(size: 14))
-                .foregroundStyle(Theme.brass)
+                .font(theme.numberFont(size: 14))
+                .foregroundStyle(theme.brass)
             Text("/ \(collection.totalCount) collected")
-                .font(Theme.nameFont(size: 12))
-                .foregroundStyle(Theme.textSecondary)
+                .font(theme.nameFont(size: 12))
+                .foregroundStyle(theme.textSecondary)
         }
         .padding(.horizontal, 14)
         .frame(height: 32)

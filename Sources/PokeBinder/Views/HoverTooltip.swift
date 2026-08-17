@@ -101,6 +101,7 @@ extension View {
 
 struct HoverTooltipHost: View {
     @ObservedObject var model: HoverTooltipModel
+    @Environment(\.appTheme) private var theme
     @State private var tooltipSize: CGSize = .zero
 
     var body: some View {
@@ -128,13 +129,11 @@ struct HoverTooltipHost: View {
         case .label(let text):
             Text(text)
                 .font(.system(size: 11, weight: .medium, design: .rounded))
-                .foregroundStyle(Theme.textPrimary)
+                .foregroundStyle(theme.textPrimary)
                 .padding(.horizontal, 9)
                 .padding(.vertical, 5)
                 .fixedSize()
-                .background(Capsule().fill(Theme.controlFill))
-                .overlay(Capsule().strokeBorder(Theme.controlStroke, lineWidth: 1))
-                .shadow(color: .black.opacity(0.18), radius: 6, y: 2)
+                .floatingPill(in: Capsule())
         }
     }
 

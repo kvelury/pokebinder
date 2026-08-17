@@ -5,10 +5,13 @@ import SwiftUI
 /// `CollectionStore.use(_:)`; disconnecting falls back to `LocalOwnershipBackend`.
 struct SettingsSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.appTheme) private var theme
     @EnvironmentObject private var collection: CollectionStore
     @EnvironmentObject private var notion: NotionManager
 
     @AppStorage(AppSettings.appearanceKey) private var appearance: AppAppearance = .system
+    @AppStorage(AppSettings.appStyleKey) private var appStyle: AppStyle = .classic
+    @AppStorage(AppSettings.glassPaletteKey) private var glassPalette: GlassPalette = .fullGlass
     @AppStorage(AppSettings.typeEraKey) private var typeEra: TypeEra = .current
 
     /// Defaulted to the database from the spec, but editable rather than hardcoded.
@@ -24,6 +27,25 @@ struct SettingsSheet: View {
                 }
 
                 Section("Theme") {
+                    Picker("Style", selection: $appStyle) {
+                        ForEach(AppStyle.allCases) { Text($0.title).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+
+                    if appStyle == .liquidGlass {
+                        LabeledContent("Glass palette") {
+                            Text(glassPalette.title)
+                                .foregroundStyle(theme.textSecondary)
+                        }
+
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                            ForEach(GlassPalette.allCases) { palette in
+                                paletteChoice(palette)
+                            }
+                        }
+                        .padding(.vertical, 2)
+                    }
+
                     Picker("Appearance", selection: $appearance) {
                         ForEach(AppAppearance.allCases) { Text($0.title).tag($0) }
                     }
@@ -31,7 +53,7 @@ struct SettingsSheet: View {
 
                     Text("Auto follows the Appearance setting in System Settings.")
                         .font(.caption)
-                        .foregroundStyle(Theme.textSecondary)
+                        .foregroundStyle(theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
@@ -43,7 +65,7 @@ struct SettingsSheet: View {
 
                     Text("Current includes later Steel and Fairy assignments. Gen I shows the types used in the original games.")
                         .font(.caption)
-                        .foregroundStyle(Theme.textSecondary)
+                        .foregroundStyle(theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
@@ -53,7 +75,7 @@ struct SettingsSheet: View {
                     }
 
                     TextField("Database ID", text: $databaseId)
-                        .font(Theme.numberFont(size: 11))
+                        .font(theme.numberFont(size: 11))
                         .textFieldStyle(.roundedBorder)
 
                     connectionButton
@@ -67,7 +89,7 @@ struct SettingsSheet: View {
 
                     Text("Connect your Notion account (opens the browser). Ownership is read from this database and the Owned toggle writes back to the matching row.")
                         .font(.caption)
-                        .foregroundStyle(Theme.textSecondary)
+                        .foregroundStyle(theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
@@ -88,12 +110,61 @@ struct SettingsSheet: View {
             }
             .padding(14)
         }
-        .frame(width: 470, height: 570)
+        .frame(width: 520, height: 680)
         .onChange(of: notion.connectionState) { _, state in
             if case .connected = state {
                 Task { await collection.use(NotionOwnershipBackend(manager: notion)) }
             }
         }
+    }
+
+    private func paletteChoice(_ palette: GlassPalette) -> some View {
+        let preview = Theme(style: .liquidGlass, palette: palette)
+        let isSelected = glassPalette == palette
+
+        return Button {
+            glassPalette = palette
+        } label: {
+            HStack(spacing: 9) {
+                ZStack {
+                    Circle()
+                        .fill(preview.cover)
+                        .frame(width: 22, height: 22)
+                    Circle()
+                        .fill(preview.brass)
+                        .frame(width: 11, height: 11)
+                        .offset(x: 8, y: 7)
+                }
+                .frame(width: 32)
+
+                Text(palette.title)
+                    .font(.system(size: 11.5, weight: isSelected ? .semibold : .regular))
+                    .foregroundStyle(theme.textPrimary)
+                    .lineLimit(1)
+
+                Spacer(minLength: 0)
+
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(theme.brass)
+                }
+            }
+            .padding(.horizontal, 10)
+            .frame(height: 42)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(isSelected ? theme.controlFillActive : theme.controlFill.opacity(0.62))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(isSelected ? theme.brass.opacity(0.7) : theme.controlStroke, lineWidth: 1)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(palette.title)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     @ViewBuilder
@@ -102,21 +173,21 @@ struct SettingsSheet: View {
             switch notion.connectionState {
             case .disconnected:
                 Circle()
-                    .fill(Theme.textSecondary.opacity(0.5))
+                    .fill(theme.textSecondary.opacity(0.5))
                     .frame(width: 7, height: 7)
                 Text("Not connected")
-                    .foregroundStyle(Theme.textSecondary)
+                    .foregroundStyle(theme.textSecondary)
             case .connecting:
                 ProgressView()
                     .controlSize(.mini)
                 Text("Waiting for authorization…")
-                    .foregroundStyle(Theme.textSecondary)
+                    .foregroundStyle(theme.textSecondary)
             case .connected(let workspace):
                 Circle()
                     .fill(Color.green)
                     .frame(width: 7, height: 7)
                 Text(workspace)
-                    .foregroundStyle(Theme.textPrimary)
+                    .foregroundStyle(theme.textPrimary)
             }
         }
     }

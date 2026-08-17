@@ -13,6 +13,7 @@ struct PageSideView: View {
 
     @EnvironmentObject private var binder: BinderState
     @EnvironmentObject private var collection: CollectionStore
+    @Environment(\.appTheme) private var theme
 
     private var slots: [BinderSlot] { BinderSlot.slots(page: page, side: side) }
 
@@ -46,7 +47,7 @@ struct PageSideView: View {
     private var pageBackground: some View {
         let shape = RoundedRectangle(cornerRadius: metrics.pageCornerRadius, style: .continuous)
         return shape
-            .fill(Theme.page)
+            .fill(theme.page)
             .overlay(
                 // Darkening toward the spine — the page curving into the gutter.
                 LinearGradient(
