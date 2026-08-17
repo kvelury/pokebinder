@@ -104,6 +104,10 @@ struct ContentView: View {
                 viewModeButton(.grid, icon: "square.grid.2x2")
             }
         }
+        // Two buttons in one toolbar item get a shared macOS 26 container drawn around
+        // the pair — an outer capsule enclosing the active pill's own capsule. Only the
+        // active fill should mark the selection, so hide the group's background.
+        .sharedBackgroundVisibility(.hidden)
 
         ToolbarItem(placement: .principal) {
             searchField
