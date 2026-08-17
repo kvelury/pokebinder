@@ -67,17 +67,37 @@ Every row was picked by the user from visualized alternatives. **Do not undo wit
 | Area | Decision |
 |---|---|
 | Binder chrome | **Full skeuomorphic binder** — cover surrounding the spread, 3 rings down the center, page shadow into the gutter |
-| Liquid Glass | **Chrome only** — toolbar, pager bar, Settings. Pages and sleeves stay opaque |
+| Chrome | **Flat pills** — one fill + hairline, in `PillChrome.swift`. Superseded the Liquid Glass treatment (see §4a) |
 | Card slot | **Corner badge + name** — mono number badge top-left, art centered, name centered at the base |
 | Appearance | **Adaptive light/dark** following System Settings |
 | Page turn | **3D page turn on the ring axis**, ~0.45s, shadow sweeping the page underneath *(part 2)* |
 | Search | **Auto-flip + spotlight**; ⏎/⌘G cycles matches *(auto-flip and cycling are part 2)* |
-| Pager | **Three separate glass capsules** — `◀` · editable `N / 19` · `▶` |
-| Toolbar | Native toolbar, **search centered**; Binder\|Grid leading; ⚙ trailing; collected count in the bottom bar |
+| Pager | **Three separate pills** — `◀` · editable `N / 19` · `▶` |
+| Toolbar | Native toolbar, **search centered** in one wide pill; Binder\|Grid icon pills leading; ⚙ trailing; collected count in the bottom bar |
 | Missing card | **Grayscale + dashed sleeve**, number still legible |
 | Card click | **Detail popover** with an explicit `Owned` toggle — never click-to-toggle |
 | Cover + accent | **Forest green + brass** (below) |
 | Grid view | Segment **live and switchable**, lands on a "Coming soon" empty state |
+
+### 4a. The chrome was reworked after part 1 — flat pills, not glass
+
+The user asked for the chrome to be cleaned up and pointed at a reference bar (a flat dark toolbar:
+icon buttons at the leading edge, one wide search field taking the middle, a hairline underneath),
+asking for **pill** shapes in place of its rounded rectangles. That **overrode** the two rules part 1
+had recorded here — "chrome uses Liquid Glass" and "never put a `Capsule` behind the search field".
+Both are now obsolete. What replaced them:
+
+- **`PillChrome.swift`** (was `GlassChrome.swift`) is the single pill surface: a fill plus a hairline.
+  `.pillChrome(in:active:)` for controls resting on the toolbar, `.floatingPill(in:)` for the pager and
+  count, which sit over the binder and take a faint shadow. No `glassEffect` anywhere.
+- **Toolbar**: two icon-only pills (Binder/Grid) where only the active one is filled, a 380pt search
+  pill in the middle, a bare gear trailing. The brass underline is gone — the fill marks selection.
+- **`.toolbarBackground(Theme.chrome, …)`** makes the bar opaque. Without it the titlebar is
+  translucent and the desktop behind the window bleeds through the top edge.
+- `Theme` gained `chrome`, `chromeDivider`, `controlFill`, `controlFillActive`, `controlStroke`.
+
+`.buttonStyle(.plain)` on every toolbar control is what stops macOS 26 adding glass of its own beneath
+our pills — keep it, or a pill ends up inside a glass capsule.
 
 ### Palette (in `Theme.swift`)
 
@@ -140,26 +160,25 @@ pokebinder/
         ├── PageSideView.swift       ✅ 2x2 side + gutter shadow
         ├── CardSlotView.swift       ✅ badge/art/name, owned/missing/spotlight, popover
         ├── CardDetailPopover.swift  ✅ big art + Owned toggle
-        ├── PagerBar.swift           ✅ three glass capsules + CollectedCountPill
+        ├── PagerBar.swift           ✅ three pills + CollectedCountPill
         ├── GridViewStub.swift       ✅ Coming soon container
         ├── SettingsSheet.swift      ✅ shell; Notion section disabled pending part 3
-        └── GlassChrome.swift        ✅ ported FloatingChrome
+        └── PillChrome.swift         ✅ the one pill surface (replaced GlassChrome)
 ```
 
 Working end to end: opens to page 1; arrows and the editable field navigate all 19 pages (clamped,
 invalid input reverts); search flips the binder to the first match, rings it in brass, rings other
 matches faintly, dims non-matches, and ⏎/⌘G/⇧⌘G cycle with an "n of m" counter; clicking a card opens
 the popover and the Owned toggle persists locally; Grid lands on the stub; light and dark both render;
-toolbar and pager use Liquid Glass on macOS 26.
+toolbar and pager use the flat pill chrome of §4a.
 
-### Toolbar is deliberately bare — do not "restore" it
+### Toolbar: pills, but still no nested containers
 
-The user explicitly rejected nested containers. macOS 26 already draws a glass capsule around **every
-toolbar item**, so anything with its own background inside one reads as an oval within an oval. So:
-plain text tabs with a brass underline for the active view, a search field with **no** background,
-a plain gear, and **no window title** (`WindowConfigurator` sets `titleVisibility = .hidden`;
-`.windowStyle(.hiddenTitleBar)` would remove the toolbar too).
-**Do not reintroduce `.pickerStyle(.segmented)` or a `Capsule` behind the search field.**
+The user rejected nested containers, and that still holds — each control draws **one** pill and nothing
+wraps a group of them. `.pickerStyle(.segmented)` is still out: the Binder/Grid pair is two icon pills
+where only the active one is filled, not a segmented track. There is still **no window title**
+(`WindowConfigurator` sets `titleVisibility = .hidden`; `.windowStyle(.hiddenTitleBar)` would remove the
+toolbar too, and with it the traffic lights' correct placement in a unified titlebar).
 
 **Two traps already hit:**
 - A `@MainActor` type cannot be constructed in a *default argument* (evaluated in a nonisolated
@@ -232,26 +251,18 @@ Touches a new `Sources/PokeBinder/Notion/`, `SettingsSheet.swift`, and one line 
 relaunch stays connected and paints immediately; the popover toggle changes the Notion row; a forced
 failure reverts the local flip and surfaces the error.
 
-## 9. Liquid Glass rules (from Dosa's hard-won comments)
+## 9. Chrome rules
 
-```swift
-#if canImport(FoundationModels)   // compile-time macOS 26 SDK probe
-if #available(macOS 26.0, *) {    // runtime check
-    content.glassEffect(.regular, in: shape)
-} else { material(content) }
-#else
-material(content)
-#endif
-```
+The Liquid Glass rules that used to live here are gone with the glass (§4a). What survives:
 
-1. **Never apply `floatingChrome` to a toolbar item** — macOS 26 gives toolbar items their own glass;
-   ours on top is glass-on-glass.
-2. **Never put `if #available` inside a `.toolbar { }` closure.**
+1. **Never put `if #available` inside a `.toolbar { }` closure.**
    `ToolbarContentBuilder.buildLimitedAvailability` is macOS 14.5+ and we target 14.0, so it resolves
    to the *obsoleted* overload ("may crash on earlier versions"). Put the branch in a `ViewBuilder`
-   outside the closure.
-3. **Never `.interactive()`** on glass that contains its own controls — only on glass that *is* one
-   button.
+   outside the closure. Nothing in the toolbar needs one today — the pill chrome is version-agnostic,
+   which is part of why it replaced the glass.
+2. **Keep `.buttonStyle(.plain)` on every toolbar control.** It is what stops macOS 26 from drawing its
+   own glass capsule beneath our pill.
+3. **One pill per control, never a container around a group.** See §4a.
 
 ## 10. Build and run
 

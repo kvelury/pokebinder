@@ -3,6 +3,13 @@
 Single source of truth for this project: the plan and the handoff, copied verbatim.
 Part 1 is built; parts 2 and 3 are open.
 
+> **Amendment — the chrome was reworked after part 1.** The Liquid Glass chrome described below was
+> replaced by flat pills at the user's request: `GlassChrome.swift` → `PillChrome.swift`, a wide search
+> pill, Binder/Grid icon pills, an opaque toolbar background. Wherever the text below says the chrome
+> uses Liquid Glass, or forbids a `Capsule` behind the search field, **`handoff.md` §4a supersedes it.**
+> Everything else here — the data plumbing, the binder itself, the card slot, the part 2/3 seams —
+> still stands.
+
 ---
 
 # PART ONE OF TWO — THE PLAN

@@ -1,10 +1,10 @@
 import SwiftUI
 
-/// The page control: three separate glass capsules — ◀ , an editable `N / 19`, ▶.
+/// The page control: ◀ , an editable `N / 19`, ▶.
 ///
-/// Kept as three surfaces rather than one pill because that is how macOS 26 groups
-/// related controls, and because the gap gives the text field's focus ring room to
-/// breathe when you click into it.
+/// Kept as three surfaces rather than one wide pill because the gap gives the text
+/// field's focus ring room to breathe when you click into it, and because the arrows
+/// want to be round — a circle is the honest shape for a single glyph.
 struct PagerBar: View {
     @EnvironmentObject private var binder: BinderState
 
@@ -53,7 +53,7 @@ struct PagerBar: View {
         .buttonStyle(.plain)
         .disabled(!enabled)
         .opacity(enabled ? 1 : 0.3)
-        .floatingChrome(in: Circle())
+        .floatingPill(in: Circle())
         .help(hint)
     }
 
@@ -74,7 +74,7 @@ struct PagerBar: View {
         }
         .padding(.horizontal, 16)
         .frame(height: 36)
-        .floatingChrome(in: Capsule())
+        .floatingPill(in: Capsule())
         .help("Type a page number and press Return")
         .onChange(of: fieldFocused) { _, focused in
             // Leaving the field without pressing Return should not silently keep a
@@ -107,6 +107,6 @@ struct CollectedCountPill: View {
         }
         .padding(.horizontal, 14)
         .frame(height: 32)
-        .floatingChrome(in: Capsule())
+        .floatingPill(in: Capsule())
     }
 }
