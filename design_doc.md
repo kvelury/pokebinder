@@ -72,7 +72,9 @@ filename from its resource-sealing rule, seals its pre-signature hash, and leave
 `codesign --verify` (this broke the Stage Manager icon in practice: a bundle that fails signature
 verification can be shown as a placeholder by system icon surfaces even though `NSWorkspace` reads the
 icon fine). The bundle directory name and `CFBundleDisplayName`/`CFBundleName` stay accented — only
-the executable filename is ASCII. `build.sh` quits a running copy by
+the executable filename is ASCII. The generated `PokeBinder_PokeBinder.bundle` is copied into
+`Contents/Resources`; `TypeIconAssets` checks there first and falls back to SwiftPM's `Bundle.module`
+location for package builds. `build.sh` quits a running copy by
 **bundle id** (`quit app id "com.pokebinder.app"`), which is immune to display-name changes and
 LaunchServices name caching.
 
@@ -86,7 +88,7 @@ There is **no test suite**. Verification is by running the app.
 Each of these keys stored user data; renaming any of them silently discards it.
 
 - `CFBundleIdentifier` = `com.pokebinder.app` — the `UserDefaults` domain is keyed by it.
-- The `pokebinder.*` UserDefaults keys in `AppSettings` (appearance, Notion tokens), and
+- The `pokebinder.*` UserDefaults keys in `AppSettings` (appearance, type era, Notion tokens), and
   `localOwnedDexNumbers` in `CollectionStore`.
 - The Application Support paths, which stay ASCII `PokeBinder` despite the display name:
   `PokeBinder/artwork/` and `PokeBinder/ownership.json`.
@@ -288,12 +290,19 @@ content view's key-view loop and `NSTextField` selects all its text, so the app 
 highlighted blue. `WindowConfigurator` also clears the initial first responder.)
 
 **Cards.** A corner badge + name layout: mono number badge top-left, artwork centred in the pocket,
-name centred at the base. Cards you don't own are **greyscale behind a dashed sleeve**, with the
-number still fully legible — that was the point of choosing a corner badge over text over the art.
+type icons top-right, and the name centred at the base. Cards you don't own are **greyscale behind a
+dashed sleeve**, with the number and muted type icons still fully legible — that was the point of
+choosing corner metadata over text over the art.
 
 **Ownership.** Clicking a card pops today's **detail panel to the centre of the window, with an
 explicit `Owned` toggle**. Never click-to-toggle — too easy to change your collection by accident
 while browsing.
+
+**Types.** The detail panel presents `#035 | [type icons]` beneath the Pokémon name. Binder and detail
+icons share one component and use the SVG glyphs and colors from
+`duiker101/pokemon-type-svg-icons`. Hovering an individual icon presents its readable type name
+through the root-level hover-tooltip host, which keeps tooltips above binder clipping and is designed
+to accept richer hover content later.
 
 **Card zoom.** Clicking a pocket grows the detail panel out of that pocket and springs it to the
 centre of the window. A scrim dims the whole content area — pager bar and count pill included; the
@@ -327,10 +336,12 @@ Preference keys follow `AppSettings`: `static let <name>Key = "pokebinder.<name>
 
 - **Collection** — the active backend name and the collected count.
 - **Theme** — appearance (below).
+- **Types** — Current or original Gen I assignments. Current is the default; Gen I removes later
+  Steel/Fairy changes from the seven affected Pokémon.
 - **Notion** — Connect/Disconnect, live status, workspace name, and the database id field. The binder
   renders fully with or without Notion, so this section is genuinely optional. A connection persists
   and reloads on launch.
-- **About** — binder size (`19 pages · 151 Pokémon`) and the artwork source.
+- **About** — binder size (`19 pages · 151 Pokémon`), artwork source, and type-icon credit.
 
 ### Appearance
 

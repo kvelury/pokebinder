@@ -58,6 +58,10 @@ enum Pokedex {
         String(format: "%03d", dex)
     }
 
+    static func types(for dex: Int, era: TypeEra) -> [PokemonType] {
+        PokemonTypeCatalog.types(for: dex, era: era)
+    }
+
     static func artworkURL(for dex: Int) -> URL {
         URL(string: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/\(dex).png")!
     }

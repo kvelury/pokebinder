@@ -14,6 +14,7 @@ struct ContentView: View {
     @StateObject private var binder = BinderState()
     @StateObject private var collection = CollectionStore()
     @StateObject private var notion = NotionManager()
+    @StateObject private var hoverTooltip = HoverTooltipModel()
     @State private var showSettings = false
     @State private var selection: CardSelection?
     @FocusState private var searchFocused: Bool
@@ -49,12 +50,16 @@ struct ContentView: View {
 
             toolbarDivider
             keyboardShortcuts
+
+            HoverTooltipHost(model: hoverTooltip)
+                .zIndex(100)
         }
         .coordinateSpace(.named(BinderSpace.content))
         .background(WindowConfigurator())
         .environmentObject(binder)
         .environmentObject(collection)
         .environmentObject(notion)
+        .environmentObject(hoverTooltip)
         .toolbar { toolbarContent }
         // The app's name is already in the menu bar; a second copy of it between the
         // view tabs and the search field is just noise. `titleVisibility = .hidden` on

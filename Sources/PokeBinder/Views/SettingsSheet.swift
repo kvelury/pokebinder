@@ -9,6 +9,7 @@ struct SettingsSheet: View {
     @EnvironmentObject private var notion: NotionManager
 
     @AppStorage(AppSettings.appearanceKey) private var appearance: AppAppearance = .system
+    @AppStorage(AppSettings.typeEraKey) private var typeEra: TypeEra = .current
 
     /// Defaulted to the database from the spec, but editable rather than hardcoded.
     @AppStorage(AppSettings.notionDatabaseIdKey)
@@ -29,6 +30,18 @@ struct SettingsSheet: View {
                     .pickerStyle(.segmented)
 
                     Text("Auto follows the Appearance setting in System Settings.")
+                        .font(.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Section("Types") {
+                    Picker("Assignments", selection: $typeEra) {
+                        ForEach(TypeEra.allCases) { Text($0.title).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+
+                    Text("Current includes later Steel and Fairy assignments. Gen I shows the types used in the original games.")
                         .font(.caption)
                         .foregroundStyle(Theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -61,6 +74,7 @@ struct SettingsSheet: View {
                 Section("About") {
                     LabeledContent("Binder", value: "\(Pokedex.pageCount) pages · \(Pokedex.count) Pokémon")
                     LabeledContent("Artwork", value: "PokeAPI official artwork")
+                    LabeledContent("Type icons", value: "duiker101")
                 }
             }
             .formStyle(.grouped)

@@ -4,6 +4,7 @@ import Foundation
 /// than Dosa's, so a token from one app can never be mistaken for the other.
 enum AppSettings {
     static let appearanceKey = "pokebinder.appearance"
+    static let typeEraKey = "pokebinder.typeEra"
 
     static let notionClientIdKey = "pokebinder.notionClientId"
     static let notionAccessTokenKey = "pokebinder.notionAccessToken"
