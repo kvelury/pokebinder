@@ -67,7 +67,9 @@ struct BinderView: View {
             toPage = binder.currentPage
         }
         .onChange(of: binder.currentPage) { _, newValue in
-            selection = nil
+            withAnimation(reduceMotion ? AppMotion.quick : AppMotion.cardDetail) {
+                selection = nil
+            }
             if ignorePageChange == newValue {
                 ignorePageChange = nil
                 return

@@ -48,10 +48,12 @@ struct CardSlotView: View {
         .onHover { isHovering = $0 }
         .onTapGesture {
             guard let dex = slot.dexNumber else { return }
-            if selection?.dexNumber == dex {
-                selection = nil
-            } else {
-                selection = CardSelection(dexNumber: dex, sourceRect: frameInContent)
+            withAnimation(cardDetailMotion) {
+                if selection?.dexNumber == dex {
+                    selection = nil
+                } else {
+                    selection = CardSelection(dexNumber: dex, sourceRect: frameInContent)
+                }
             }
         }
         .accessibilityElement(children: .ignore)
@@ -160,6 +162,10 @@ struct CardSlotView: View {
 
     private func motion(_ animation: Animation) -> Animation? {
         AppMotion.respectingReduceMotion(animation, reduceMotion: reduceMotion)
+    }
+
+    private var cardDetailMotion: Animation {
+        reduceMotion ? AppMotion.quick : AppMotion.cardDetail
     }
 
     private var accessibilityLabel: String {

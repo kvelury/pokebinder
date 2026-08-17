@@ -2,52 +2,58 @@ import SwiftUI
 
 /// The selected card's detail panel, quickly animated from its pocket to the window centre.
 struct CardZoomOverlay: View {
-    let selection: CardSelection
-    let containerSize: CGSize
-    let onDismissed: () -> Void
+    @Binding var selection: CardSelection?
 
     @Environment(\.appTheme) private var theme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    @State private var presented = false
 
     private var animation: Animation {
         reduceMotion ? AppMotion.quick : AppMotion.cardDetail
     }
 
-    private var sourceCentre: CGPoint {
-        CGPoint(x: selection.sourceRect.midX, y: selection.sourceRect.midY)
-    }
-
-    private var centre: CGPoint {
-        CGPoint(x: containerSize.width / 2, y: containerSize.height / 2)
-    }
-
-    private var startScale: CGFloat {
-        max(0.05, selection.sourceRect.width / CardDetailPanel.width)
-    }
-
     var body: some View {
-        ZStack {
-            scrim
-            panel
+        GeometryReader { geo in
+            ZStack {
+                if selection != nil {
+                    scrim
+                        .transition(.opacity)
+                }
+
+                if let selection {
+                    CardDetailPanel(dexNumber: selection.dexNumber, onClose: dismiss)
+                        .position(x: geo.size.width / 2, y: geo.size.height / 2)
+                        .transition(panelTransition(for: selection, in: geo.size))
+                }
+            }
+            .frame(width: geo.size.width, height: geo.size.height)
+            .background {
+                if selection != nil {
+                    escapeKey
+                }
+            }
+            .allowsHitTesting(selection != nil)
         }
-        .onAppear { withAnimation(animation) { presented = true } }
-        .background(escapeKey)
     }
 
     private var scrim: some View {
         (theme.isLiquidGlass && !reduceTransparency ? theme.modalScrim : Color.black.opacity(0.45))
-            .opacity(presented ? 1 : 0)
             .contentShape(Rectangle())
             .onTapGesture { dismiss() }
     }
 
-    private var panel: some View {
-        CardDetailPanel(dexNumber: selection.dexNumber, onClose: dismiss)
-            .scaleEffect(reduceMotion ? 1 : (presented ? 1 : startScale))
-            .position(reduceMotion ? centre : (presented ? centre : sourceCentre))
-            .opacity(presented ? 1 : 0)
+    private func panelTransition(for selection: CardSelection, in containerSize: CGSize) -> AnyTransition {
+        if reduceMotion {
+            return .opacity
+        }
+
+        let centre = CGPoint(x: containerSize.width / 2, y: containerSize.height / 2)
+        let startScale = max(0.05, selection.sourceRect.width / CardDetailPanel.width)
+        return .scale(scale: startScale)
+            .combined(with: .offset(
+                x: selection.sourceRect.midX - centre.x,
+                y: selection.sourceRect.midY - centre.y
+            ))
     }
 
     /// Esc, scoped to the overlay's lifetime — a permanently installed escape
@@ -62,10 +68,8 @@ struct CardZoomOverlay: View {
     }
 
     private func dismiss() {
-        withAnimation(animation, completionCriteria: .logicallyComplete) {
-            presented = false
-        } completion: {
-            onDismissed()
+        withAnimation(animation) {
+            selection = nil
         }
     }
 }

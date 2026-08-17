@@ -310,7 +310,9 @@ to accept richer hover content later.
 of the window; dismissal reverses the same short transition. A scrim dims the whole content area —
 pager bar and count pill included; the top functional controls stay bright. Dismiss with the scrim,
 Esc, or the ✕ on the panel. Clicking the panel itself does not dismiss (it would fight the Owned
-switch). Reduce Motion replaces the travel and scale with the quick fade.
+switch). The insertion transition is part of the click's state-change transaction, so it begins
+without waiting for an `onAppear` callback. Reduce Motion replaces the travel and scale with the
+quick fade.
 
 The overlay is hosted in `ContentView` so it can sit above the pager. That is not enough on its own
 for the trackpad. `TrackpadPageTurnCatcher` installs a local `NSEvent` scroll-wheel monitor that

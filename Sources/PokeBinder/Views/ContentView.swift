@@ -42,15 +42,7 @@ struct ContentView: View {
                 }
             }
 
-            if let selection {
-                GeometryReader { geo in
-                    CardZoomOverlay(
-                        selection: selection,
-                        containerSize: geo.size,
-                        onDismissed: { self.selection = nil }
-                    )
-                }
-            }
+            CardZoomOverlay(selection: $selection)
 
             toolbarDivider
             keyboardShortcuts
@@ -87,7 +79,9 @@ struct ContentView: View {
                 .environmentObject(collection)
                 .environmentObject(notion)
         }
-        .onChange(of: binder.viewMode) { _, _ in selection = nil }
+        .onChange(of: binder.viewMode) { _, _ in
+            withAnimation(cardDetailMotion) { selection = nil }
+        }
         .task {
             if notion.isConnected {
                 await collection.use(NotionOwnershipBackend(manager: notion))
@@ -261,6 +255,10 @@ struct ContentView: View {
 
     private var controlMotion: Animation? {
         AppMotion.respectingReduceMotion(AppMotion.quick, reduceMotion: reduceMotion)
+    }
+
+    private var cardDetailMotion: Animation {
+        reduceMotion ? AppMotion.quick : AppMotion.cardDetail
     }
 
     /// One wide pill holding icon, field, match counter and clear button. Search gets
