@@ -542,13 +542,14 @@ struct BinderStack: View {
 /// The binder's outer plate — the object the pages sit inside.
 private struct BinderCover: View {
     let metrics: BinderMetrics
+    @Environment(\.appTheme) private var theme
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: metrics.coverCornerRadius, style: .continuous)
         return shape
             .fill(
                 LinearGradient(
-                    colors: [Theme.coverHighlight, Theme.cover, Theme.coverDeep],
+                    colors: [theme.coverHighlight, theme.cover, theme.coverDeep],
                     startPoint: .top,
                     endPoint: .bottom
                 )
@@ -574,11 +575,12 @@ private struct BinderCover: View {
 /// The ring channel between the two pages.
 struct SpineView: View {
     let metrics: BinderMetrics
+    @Environment(\.appTheme) private var theme
 
     var body: some View {
         ZStack {
             LinearGradient(
-                colors: [Theme.coverDeep, Theme.cover, Theme.cover, Theme.coverDeep],
+                colors: [theme.coverDeep, theme.cover, theme.cover, theme.coverDeep],
                 startPoint: .leading,
                 endPoint: .trailing
             )
@@ -601,7 +603,7 @@ struct SpineView: View {
         Circle()
             .strokeBorder(
                 LinearGradient(
-                    colors: [Theme.brassBright, Theme.brass, Theme.brassDeep, Theme.brass],
+                    colors: [theme.brassBright, theme.brass, theme.brassDeep, theme.brass],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 ),

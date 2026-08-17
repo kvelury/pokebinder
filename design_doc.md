@@ -8,7 +8,7 @@ that got it here and the reasons they should not be quietly undone.
 - `handoff.md` is **not** tracked (it is in `.gitignore`). It is scratch: the work order for whoever
   is picking up the next chunk. Nothing durable should live only there.
 
-Last updated for: **Part 6 — Card zoom**. Parts 1–6 are shipped.
+Last updated for: **Liquid Glass themes**. Parts 1–6 and the optional glass visual system are shipped.
 
 ---
 
@@ -46,9 +46,9 @@ Two consequences worth knowing:
   strict-concurrency migration across `ArtworkStore`'s actor, the `@MainActor` stores, and
   `NotionAuth`'s `NWListener` callbacks. The string overload is not tools-version gated, so
   `// swift-tools-version: 5.9` stays.
-- **Targeting macOS 26 is not permission to use Liquid Glass.** `glassEffect` and friends are now
-  reachable without a check. The flat-pill chrome (§5) is a deliberate design choice, not a
-  compatibility compromise.
+- **Liquid Glass is opt-in inside the app.** The saved Classic style preserves the original flat-pill
+  chrome. The Liquid Glass style uses macOS 26 APIs directly and follows the functional-layer rules
+  in §5; neither style needs a compatibility branch.
 
 | Fact | Value |
 |---|---|
@@ -129,12 +129,12 @@ Artwork comes from the PokeAPI sprite CDN — 475×475 PNGs with alpha, public a
 
 ```
 Sources/PokeBinder/
-├── PokeBinderApp.swift     @main — WindowGroup, appearance apply, 1320×900 default, 1000×780 min, unified toolbar
-├── Appearance.swift        Light / Dark / Auto → NSApplication.shared.appearance
+├── PokeBinderApp.swift     @main — WindowGroup, appearance apply, theme environment, window sizing
+├── Appearance.swift        app style, glass palette, and Light / Dark / Auto
 ├── AppSettings.swift       the pokebinder.* UserDefaults keys
 ├── Pokedex.swift           151 names + the derivation above + artwork URLs
 ├── Models.swift            BinderSide, ViewMode, BinderSlot, SlotEmphasis
-├── Theme.swift             adaptive color tokens + typography + BinderMetrics
+├── Theme.swift             environment palette + adaptive tokens + typography + BinderMetrics
 ├── ArtworkStore.swift      actor + disk cache + prefetch, and CardArtworkView
 ├── CollectionStore.swift   OwnershipBackend, LocalOwnershipBackend, CollectionStore
 ├── BinderState.swift       navigation + search (matching, auto-flip, cycling, emphasis)
@@ -153,7 +153,7 @@ Sources/PokeBinder/
     ├── CardDetailPanel.swift    the centred detail panel + the Owned toggle
     ├── CardZoomOverlay.swift    scrim + the pocket→centre pop
     ├── PagerBar.swift           ◀ · click-to-edit N / 19 · ▶, and CollectedCountPill
-    ├── PillChrome.swift         the single pill surface
+    ├── PillChrome.swift         shared Classic/glass control and panel surfaces
     ├── GridViewStub.swift       "Coming soon"
     └── SettingsSheet.swift      Collection / Theme / Notion / About sections
 ```
@@ -192,9 +192,11 @@ is noisier than the art simply arriving.
 
 ## 5. Design system
 
-### Palette
+### Palettes
 
-Forest green + brass. Light and dark are both first-class.
+Classic remains forest green + brass. Liquid Glass adds Full Glass (neutral content and untinted
+glass), Forest & Brass, Navy & Gold, and Burgundy & Dark Gold. Light and dark are first-class for
+every palette. Palette tokens recolor the binder and functional accents, never Pokémon artwork.
 
 |  | Light | Dark |
 |---|---|---|
@@ -203,9 +205,9 @@ Forest green + brass. Light and dark are both first-class.
 | sleeve | `#F0F5F1` | `#1F2E28` |
 | rings / accent (brass) | `#A8863C` | `#D0A94F` |
 
-All 17 tokens live on `enum Theme` in `Theme.swift`, each built with
-`Color.adaptive(light:dark:)`. Because SwiftUI asset-catalog colors aren't available to an SPM
-executable, that helper wraps an `NSColor` dynamic provider:
+Tokens live on the `Theme` value in `Theme.swift`, which is injected through `EnvironmentValues`.
+Each color is still built with `Color.adaptive(light:dark:)`. Because SwiftUI asset-catalog colors
+aren't available to an SPM executable, that helper wraps an `NSColor` dynamic provider:
 
 ```swift
 Color(nsColor: NSColor(name: nil) { appearance in
@@ -214,9 +216,8 @@ Color(nsColor: NSColor(name: nil) { appearance in
 })
 ```
 
-The closure runs **at draw time against the current `NSAppearance`**, which is why the app follows an
-appearance change live without a relaunch — and why the appearance toggle in §7 needs no changes to
-`Theme.swift` at all.
+The closure runs **at draw time against the current `NSAppearance`**, while changing style or palette
+replaces the environment `Theme` value and redraws the complete hierarchy.
 
 ### Typography
 
@@ -232,30 +233,25 @@ one object and never distorts. Real cards are 2.5" × 3.5", so `cardAspect = 5/7
 ⚠️ `fitting(_:)` restates the padding ratios as literals. Change `pagePadding`, `coverPadding` or
 `cardGap` and you must mirror it there.
 
-### Chrome — flat pills
+### Chrome — two visual systems
 
-`PillChrome.swift` is the app's single pill surface: a fill plus a hairline, in a capsule or a
-circle. `.pillChrome(in:active:stroked:)` for controls resting on the toolbar;
-`.floatingPill(in:)` for the pager and count, which sit over the binder and take a faint shadow.
+`PillChrome.swift` is the shared surface boundary. Classic renders the original fill, hairline, and
+optional floating shadow. Liquid Glass uses native `glassEffect`, interactive pointer response on
+actionable controls, and `GlassEffectContainer` for adjacent shapes. Reduce Transparency falls back
+to the opaque semantic fill and border. Large transient panels use the same policy through
+`panelChrome`.
 
-Three rules that are load-bearing:
+Classic keeps the opaque unified toolbar and its anti-double-container rules (`.buttonStyle(.plain)`
+and `.sharedBackgroundVisibility(.hidden)`). Liquid Glass removes the visible top bar, extends
+content into the titlebar, and presents Binder/Grid, search, and Settings as three floating clusters.
+The standard traffic lights remain. The window background is draggable when the toolbar background
+is absent.
 
-1. **One pill per control. Never a container around a group.** The Binder/Grid pair is two icon pills
-   where only the active one is filled — not a segmented track. (This rule is about the *toolbar*. A
-   segmented picker inside a Settings `Form` is fine and is what §7 uses.)
-2. **Keep `.buttonStyle(.plain)` on every toolbar control.** It is the only thing stopping macOS 26
-   drawing its own 36pt container beneath our pill — a pill inside a capsule.
-3. **`.buttonStyle(.plain)` does not apply to a `TextField`.** The search field is the one control
-   that still got a container, so its `ToolbarItem` carries
-   `.sharedBackgroundVisibility(.hidden)` instead. Its pill is also drawn `stroked: false` — with the
-   container gone, the fill alone carries the shape and a hairline on top read as a second border.
+Glass is a **functional layer only**: navigation, controls, hover tooltips, sheets, and the card
+detail overlay. Binder pages, sleeves, cards, and artwork stay in the content layer. Avoid glass on
+glass; controls that already live on a glass panel don't receive a second material.
 
-`.toolbarBackground(Theme.chrome, for: .windowToolbar)` makes the bar opaque; without it the titlebar
-stays translucent and the desktop bleeds through the top edge.
-
-There is **no window title**. `WindowConfigurator` sets `titleVisibility = .hidden`;
-`.windowStyle(.hiddenTitleBar)` would take the toolbar with it, and with it the traffic lights'
-placement in a unified titlebar. A visible title also pushes the centred search field off centre.
+There is **no window title** in either style.
 
 ## 6. Interaction design
 
@@ -283,7 +279,8 @@ Two things learned the hard way here:
 - A bare number is treated as an exact Pokédex entry: typing `25` lands on Pikachu, not on every
   number containing a 2 and a 5.
 
-**The pager.** Three separate pills — `◀` · an editable `N / 19` · `▶`. The page number is
+**The pager.** Three separate surfaces — `◀` · an editable `N / 19` · `▶`. They are flat pills in
+Classic and a coordinated glass group in Liquid Glass. The page number is
 **click-to-edit**: a plain label at rest, swapping to a focused field only when clicked. It is never
 focused at launch. (Left to itself, AppKit hands first responder to the first text field in the
 content view's key-view loop and `NSTextField` selects all its text, so the app used to open with `1`
@@ -306,7 +303,7 @@ to accept richer hover content later.
 
 **Card zoom.** Clicking a pocket grows the detail panel out of that pocket and springs it to the
 centre of the window. A scrim dims the whole content area — pager bar and count pill included; the
-toolbar stays bright. Dismiss by clicking the scrim, pressing Esc, or the ✕ on the panel; clicking
+top functional controls stay bright. Dismiss by clicking the scrim, pressing Esc, or the ✕ on the panel; clicking
 the panel itself does not dismiss (it would fight the Owned switch). Reduce Motion skips the travel
 and the scale: the panel appears centred with a fade. Selection is a `CGRect` captured at tap time,
 not `matchedGeometryEffect` — `BinderStack` draws the same pocket twice during a page turn, which
@@ -335,7 +332,7 @@ Preference keys follow `AppSettings`: `static let <name>Key = "pokebinder.<name>
 ### Sections
 
 - **Collection** — the active backend name and the collected count.
-- **Theme** — appearance (below).
+- **Theme** — Classic/Liquid Glass style, the four glass palettes, and appearance (below).
 - **Types** — Current or original Gen I assignments. Current is the default; Gen I removes later
   Steel/Fairy changes from the seven affected Pokémon.
 - **Notion** — Connect/Disconnect, live status, workspace name, and the database id field. The binder
@@ -353,29 +350,19 @@ App-wide rather than per-window on purpose. `.preferredColorScheme` on the main 
 out the surfaces that live in **their own windows**: the Settings sheet (where the control itself
 is) and the native toolbar/titlebar.
 
-Nothing in `Theme.swift` participates. The dynamic-provider mechanism in §5 re-resolves all 17 tokens
-against the new appearance automatically.
+The dynamic-provider mechanism in §5 re-resolves every palette token against the new appearance
+automatically.
 
-### Adding more palettes later
+### Theme persistence and observability
 
-Planned, not built. What it would actually cost:
+`pokebinder.appStyle` and `pokebinder.glassPalette` are independent saved settings. `PokeBinderApp`
+reads both with `@AppStorage`, constructs a `Theme`, and injects it into the complete hierarchy.
+Settings writes the same keys, so the main window, sheet, binder, overlays, and tooltips update live.
+Appearance remains independent and app-wide through `NSApplication.shared.appearance`.
 
-- **The call sites are not the problem.** All 59 color references across the Views are the plain
-  `Theme.<token>` static-member syntax, in 9 files. Converting `static let` → a computed `static var`
-  reading a current-palette value touches **only `Theme.swift`**; no view changes. (Discipline here
-  is good: no view builds a color from a hex or an asset name.)
-- **Observability is the problem.** `static let` on an `enum` is resolved once and is not observable,
-  so a palette swap needs either an environment-driven palette value or a view-identity bump to force
-  a redraw. The light/dark axis needs none of this — it rides the `NSAppearance` mechanism instead.
-- **A palette is not 17 free colors.** Three ordered luminance ramps have to stay coherent or the
-  binder's gradients go flat: `coverHighlight → cover → coverDeep`, `brassBright → brass →
-  brassDeep`, and the `controlFill` / `controlFillActive` / `controlStroke` trio.
-- **Some shading is deliberately not themed.** The hardcoded `.white.opacity(…)` / `.black.opacity(…)`
-  overlays in `BinderView`, `PageSideView`, `CardSlotView` and `PillChrome`, and the black scrim in
-  `CardZoomOverlay`, are physicality shading, not palette. A very light or very dark palette would
-  need them revisited.
-- **One known gap:** the connected status dot in `SettingsSheet` is a hardcoded `Color.green` — the
-  only semantic color in the app that isn't a `Theme` token.
+A palette is not a bag of independent colors. The cover, accent, and control luminance ramps must
+remain ordered so gradients, text contrast, and reduced-transparency fallbacks stay legible.
+Hardcoded black/white overlays inside the binder remain physicality shading rather than palette.
 
 ## 8. Decision log
 
@@ -385,8 +372,8 @@ without asking.**
 | Decision | Why |
 |---|---|
 | **Full skeuomorphic binder** — cover, 3 rings, gutter shadow | The app is a *binder*, not a grid of cards. The physicality is the product. |
-| **Flat pills, not Liquid Glass** | Glass gave every small control its own depth and specular edge; with a pager, a count, a search field and two tabs on screen the chrome competed with the binder. Flat pills read as one system and let the binder be the only thing with weight. Superseded the original "chrome uses Liquid Glass" rule. |
-| **One pill per control; no container around a group** | Nested containers were explicitly rejected. Also why `.pickerStyle(.segmented)` is out *in the toolbar*. |
+| **Classic and Liquid Glass are user-selectable** | Classic preserves the deliberate flat-pill design. Liquid Glass is an optional macOS 26 functional layer with floating top controls, coordinated groups, and accessibility fallbacks. |
+| **No nested material surfaces** | Adjacent glass controls share a `GlassEffectContainer`; a control already living on a glass panel doesn't add another glass layer. |
 | **No window title** | It sits between the view tabs and the search field and pushes the search off centre. |
 | **Corner badge + name card layout** | Keeps the Pokédex number legible even when the card is missing and desaturated. |
 | **Card art centred in the pocket** | Square artwork in a 5:7 pocket was top-aligned, dumping all its slack below and reading as sitting too high. |
@@ -395,7 +382,7 @@ without asking.**
 | **Card pops to the centre over a scrim, explicit toggle** | Never click-to-toggle; browsing shouldn't mutate the collection. |
 | **Three separate pager pills, click-to-edit number** | The gap gives the field's focus ring room; arrows want to be round. Click-to-edit stops the app opening with the number selected. |
 | **Adaptive light/dark, now with a Light/Dark/Auto override** | Auto stays the default — the app follows System Settings unless told otherwise. |
-| **Forest green + brass** | The cover and hardware palette. |
+| **Four Liquid Glass palettes** | Full Glass is untinted; Forest/Brass, Navy/Gold, and Burgundy/Dark Gold provide coordinated content and accent ramps. |
 | **App name `PokéBinder`**, with the accent | Matches the official Pokémon spelling. Bundle display strings only; there is still no window title. |
 | **macOS 26 only** | See §2 — a fallback for 14/15 could never be tested here. |
 | **Grid segment live, landing on "Coming soon"** | Better than a disabled control that gives no feedback. |

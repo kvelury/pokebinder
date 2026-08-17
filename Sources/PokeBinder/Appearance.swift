@@ -1,6 +1,42 @@
 import SwiftUI
 import AppKit
 
+/// The app's two visual systems. Classic preserves the original flat chrome;
+/// Liquid Glass moves controls and transient surfaces into macOS 26's glass layer.
+enum AppStyle: String, CaseIterable, Identifiable {
+    case classic
+    case liquidGlass
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .classic: "Classic"
+        case .liquidGlass: "Liquid Glass"
+        }
+    }
+}
+
+/// Color families available to Liquid Glass. Full Glass deliberately supplies no
+/// material tint so the binder and Pokémon artwork determine the reflected color.
+enum GlassPalette: String, CaseIterable, Identifiable {
+    case fullGlass
+    case forestBrass
+    case navyGold
+    case burgundyDarkGold
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .fullGlass: "Full Glass"
+        case .forestBrass: "Forest & Brass"
+        case .navyGold: "Navy & Gold"
+        case .burgundyDarkGold: "Burgundy & Dark Gold"
+        }
+    }
+}
+
 /// Light / Dark / Auto, applied app-wide.
 ///
 /// Every Theme color is an `NSColor` dynamic provider (`Color.adaptive`), resolved against the

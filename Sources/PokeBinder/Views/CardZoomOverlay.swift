@@ -23,7 +23,9 @@ struct CardZoomOverlay: View {
     let containerSize: CGSize
     let onDismissed: () -> Void
 
+    @Environment(\.appTheme) private var theme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @State private var presented = false
 
     private var animation: Animation { reduceMotion ? CardZoom.reduced : CardZoom.pop }
@@ -51,11 +53,9 @@ struct CardZoomOverlay: View {
         .background(escapeKey)
     }
 
-    /// Physicality shading, not a palette token — the same class as the hardcoded
-    /// black/white overlays in BinderView and PageSideView (design doc §7).
     private var scrim: some View {
-        Color.black
-            .opacity(presented ? 0.45 : 0)
+        (theme.isLiquidGlass && !reduceTransparency ? theme.modalScrim : Color.black.opacity(0.45))
+            .opacity(presented ? 1 : 0)
             .contentShape(Rectangle())
             .onTapGesture { dismiss() }
     }
