@@ -1,5 +1,15 @@
 import SwiftUI
 
+/// Toolbar sizing, in one place so the icon buttons and the search field stay the
+/// same height as each other. They are the only things in the bar, so anything
+/// shorter than the search pill leaves the icons swimming in empty bar.
+private enum Chrome {
+    static let toolbarControlHeight: CGFloat = 30
+    /// The square every toolbar glyph is fitted into — see `toolbarIcon`.
+    static let toolbarIcon: CGFloat = 16
+    static let toolbarButtonWidth: CGFloat = 36
+}
+
 struct ContentView: View {
     @StateObject private var binder = BinderState()
     @StateObject private var collection = CollectionStore()
@@ -33,6 +43,11 @@ struct ContentView: View {
         .environmentObject(collection)
         .environmentObject(notion)
         .toolbar { toolbarContent }
+        // The app's name is already in the menu bar; a second copy of it between the
+        // view tabs and the search field is just noise. `titleVisibility = .hidden` on
+        // the NSWindow no longer covers this — a unified toolbar draws the title as a
+        // toolbar item of its own, so it has to be removed as one.
+        .toolbar(removing: .title)
         // A flat, opaque bar. Without this the titlebar stays translucent and the
         // desktop behind the window shows through along the top edge.
         .toolbarBackground(Theme.chrome, for: .windowToolbar)
@@ -121,15 +136,34 @@ struct ContentView: View {
             Button {
                 showSettings = true
             } label: {
-                Image(systemName: "gearshape")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(Theme.textSecondary)
-                    .frame(width: 30, height: 26)
+                toolbarIcon("gearshape", tint: Theme.textSecondary)
                     .contentShape(Capsule())
             }
             .buttonStyle(.plain)
             .help("Settings")
         }
+        // `.buttonStyle(.plain)` is not enough here: a primary-action item still gets
+        // macOS 26's own container drawn around it, which is the ring that appeared
+        // around the gear. Nothing in this bar is outlined unless it is selected.
+        .sharedBackgroundVisibility(.hidden)
+    }
+
+    /// One recipe for every glyph in the bar, so the three icon buttons are the same
+    /// size as each other and sit on one line.
+    ///
+    /// A shared point size is not enough on its own: SF Symbols do not share a bounding
+    /// box, and at 16pt `gearshape` draws about a third wider than `book.closed`. Fitting
+    /// each glyph into the same square box is what actually makes them match. The button
+    /// frame around it is shared too, so every icon is centred in an identical target
+    /// and the settings button lines up with the view-mode pair across the bar.
+    private func toolbarIcon(_ name: String, tint: Color) -> some View {
+        Image(systemName: name)
+            .resizable()
+            .scaledToFit()
+            .fontWeight(.medium)
+            .foregroundStyle(tint)
+            .frame(width: Chrome.toolbarIcon, height: Chrome.toolbarIcon)
+            .frame(width: Chrome.toolbarButtonWidth, height: Chrome.toolbarControlHeight)
     }
 
     /// Icon-only pills. Only the active one takes a fill, which is what makes the pair
@@ -140,10 +174,7 @@ struct ContentView: View {
         return Button {
             binder.viewMode = mode
         } label: {
-            Image(systemName: icon)
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(isActive ? Theme.brass : Theme.textSecondary)
-                .frame(width: 32, height: 26)
+            toolbarIcon(icon, tint: isActive ? Theme.brass : Theme.textSecondary)
                 .background(Capsule().fill(isActive ? Theme.controlFillActive : .clear))
                 .overlay(Capsule().strokeBorder(isActive ? Theme.controlStroke : .clear, lineWidth: 1))
                 .contentShape(Capsule())
@@ -186,7 +217,7 @@ struct ContentView: View {
             }
         }
         .padding(.horizontal, 12)
-        .frame(width: 380, height: 30)
+        .frame(width: 380, height: Chrome.toolbarControlHeight)
         .pillChrome(in: Capsule(), stroked: false)
     }
 

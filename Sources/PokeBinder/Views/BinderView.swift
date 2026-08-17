@@ -43,19 +43,13 @@ struct BinderView: View {
             )
             let metrics = BinderMetrics.fitting(available)
 
-            ZStack {
-                if isTurning && !reduceMotion {
-                    PageTurnComposite(
-                        fromPage: fromPage,
-                        toPage: toPage,
-                        angle: angle,
-                        metrics: metrics,
-                        selectedDex: $selectedDex
-                    )
-                } else {
-                    BinderSpread(page: binder.currentPage, metrics: metrics, selectedDex: $selectedDex)
-                }
-            }
+            BinderStack(
+                fromPage: fromPage,
+                toPage: toPage,
+                angle: reduceMotion ? 0 : angle,
+                metrics: metrics,
+                selectedDex: $selectedDex
+            )
             .frame(width: metrics.totalWidth, height: metrics.totalHeight)
             .frame(width: geo.size.width, height: geo.size.height - bottomInset + outerInset, alignment: .center)
             .overlay {
@@ -327,7 +321,10 @@ struct BinderView: View {
 
 private enum PageTurn {
     static let duration: TimeInterval = 0.45
-    static let perspective: CGFloat = 0.6
+    /// Deliberately shallow. A strong vanishing point fans the leaf's outer edge to
+    /// several times its real height at 90°, so the turning page reads as bigger than
+    /// the binder holding it. See `leafScale` for the rest of that correction.
+    static let perspective: CGFloat = 0.2
 }
 
 private struct SwipeSession {
@@ -345,20 +342,33 @@ private struct TrackpadScrollEvent {
     var isPrecise: Bool
 }
 
-// MARK: - 3D composite
+// MARK: - The binder
 
-/// Outgoing and incoming spreads stacked, with the leaving leaf rotating around the rings.
+/// The whole binder, at rest and mid-turn alike: cover, both pages, the ring
+/// hardware — plus, while a turn is in flight, the leaf standing up off the rings.
 ///
-/// Z-order, back to front: cover plate, incoming pages, the static half of the outgoing
-/// spread, the turning leaf (over what it uncovers), the rings, then a cover mat so the
-/// leaf tucks *under* the cover.
-private struct PageTurnComposite: View {
+/// One view for both states on purpose. Swapping between a "turning" view and a
+/// "settled" view handed every pocket a new identity the instant the turn ended, so
+/// the page you had just landed on tore itself down and rebuilt itself — the quick
+/// refresh you could see on the left side. Here the flat pages are the same views
+/// from the first frame of a turn to the last; only the leaf comes and goes.
+///
+/// The flat layer is *not* a single spread. A turning leaf only uncovers the side it
+/// lifts off; the side it is falling toward keeps showing the page that is already
+/// there until the leaf actually lands on it. Rendering the destination spread whole
+/// underneath is what made the far page change halfway through the turn.
+///
+/// Z-order, back to front: cover plate, the flat pages, the turning leaf, the rings.
+/// The leaf rides *over* the cover's border, clipped to the binder's outer edge so it
+/// can never spill onto the desk.
+struct BinderStack: View {
     let fromPage: Int
     let toPage: Int
     let angle: Double
     let metrics: BinderMetrics
     @Binding var selectedDex: Int?
 
+    private var isTurning: Bool { abs(angle) > 0.5 || fromPage != toPage }
     private var showingFront: Bool { abs(angle) < 90 }
 
     /// Negative angle = right leaf flipping left (higher page). At rest, the destination
@@ -373,43 +383,73 @@ private struct PageTurnComposite: View {
         sin(abs(angle) * .pi / 180) * 0.5
     }
 
+    /// Undoes the perspective fan on the leaf's outer edge.
+    ///
+    /// Perspective scales a point by `1 / (1 - perspective · sin|θ|)` at the edge
+    /// furthest from the hinge, which is what pushed the page past the cover. Shrinking
+    /// by the inverse keeps the leaf inside the binder for the whole turn while the
+    /// near/far taper — the part that actually reads as depth — survives.
+    private var leafScale: CGFloat {
+        1 - PageTurn.perspective * CGFloat(sin(abs(angle) * .pi / 180))
+    }
+
     var body: some View {
         ZStack {
-            BinderCover(metrics: metrics, castsShadow: true)
+            BinderCover(metrics: metrics)
 
-            incomingSpread
-                .zIndex(0)
+            ZStack {
+                flatPages
+                    .zIndex(0)
 
-            if showingFront {
-                outgoingStaticHalf
-                    .zIndex(1)
+                if isTurning {
+                    turningLeaf
+                        // No fade on the way in or out. The leaf appears flat on top of
+                        // the page it is lifting off and lands flat on the page it is
+                        // covering, so both hand-offs are already pixel-identical.
+                        .transition(.identity)
+                        .zIndex(1)
+                }
+
+                SpineView(metrics: metrics)
+                    .zIndex(2)
             }
-
-            turningLeaf
-                .zIndex(2)
-
-            SpineView(metrics: metrics)
-                .zIndex(3)
-
-            BinderCoverMat(metrics: metrics)
-                .zIndex(4)
+            .frame(width: metrics.totalWidth, height: metrics.totalHeight)
+            .clipShape(
+                RoundedRectangle(cornerRadius: metrics.coverCornerRadius, style: .continuous)
+            )
+            // A leaf in flight must not swallow clicks meant for the pockets it passes over.
+            .allowsHitTesting(!isTurning)
         }
         .frame(width: metrics.totalWidth, height: metrics.totalHeight)
-        .allowsHitTesting(false)
     }
 
-    /// The spread being uncovered — sits under the turning leaf. A gutter-born
-    /// shadow tracks |θ|, peaking when the leaf is edge-on.
-    private var incomingSpread: some View {
+    /// Both pages lying flat under the leaf.
+    ///
+    /// The side the leaf lifts off shows the destination page, uncovered as the leaf
+    /// rises. The side the leaf falls toward is still the page you were reading — it
+    /// only becomes the destination page when the leaf lands on top of it, which is
+    /// the frame this composite hands back to `BinderSpread`.
+    private var flatPages: some View {
         HStack(spacing: 0) {
-            PageSideView(page: toPage, side: .left, metrics: metrics, selectedDex: $selectedDex)
-                .overlay { pageShadow(toward: .trailing) }
+            PageSideView(
+                page: isForward ? fromPage : toPage,
+                side: .left,
+                metrics: metrics,
+                selectedDex: $selectedDex
+            )
+            .overlay { if !isForward { pageShadow(toward: .trailing) } }
             spineGutter
-            PageSideView(page: toPage, side: .right, metrics: metrics, selectedDex: $selectedDex)
-                .overlay { pageShadow(toward: .leading) }
+            PageSideView(
+                page: isForward ? toPage : fromPage,
+                side: .right,
+                metrics: metrics,
+                selectedDex: $selectedDex
+            )
+            .overlay { if isForward { pageShadow(toward: .leading) } }
         }
     }
 
+    /// The shadow the standing leaf throws into the gutter of the page it uncovered.
     private func pageShadow(toward edge: Edge) -> some View {
         LinearGradient(
             colors: edge == .trailing
@@ -422,24 +462,10 @@ private struct PageTurnComposite: View {
         .allowsHitTesting(false)
     }
 
-    /// The half that stays put for the first 90° (left when going forward, right when going back).
-    private var outgoingStaticHalf: some View {
-        HStack(spacing: 0) {
-            if isForward {
-                PageSideView(page: fromPage, side: .left, metrics: metrics, selectedDex: $selectedDex)
-                spineGutter
-                Color.clear.frame(width: metrics.pageWidth, height: metrics.pageHeight)
-            } else {
-                Color.clear.frame(width: metrics.pageWidth, height: metrics.pageHeight)
-                spineGutter
-                PageSideView(page: fromPage, side: .right, metrics: metrics, selectedDex: $selectedDex)
-            }
-        }
-    }
-
     @ViewBuilder
     private var turningLeaf: some View {
         let lift = sin(abs(angle) * .pi / 180) * 0.45
+        let scale = leafScale
         if isForward {
             if showingFront {
                 HStack(spacing: 0) {
@@ -452,6 +478,7 @@ private struct PageTurnComposite: View {
                             anchor: .leading,
                             perspective: PageTurn.perspective
                         )
+                        .scaleEffect(scale, anchor: .leading)
                         .shadow(color: .black.opacity(lift), radius: 18, x: -6, y: 4)
                 }
             } else {
@@ -463,6 +490,7 @@ private struct PageTurnComposite: View {
                             anchor: .trailing,
                             perspective: PageTurn.perspective
                         )
+                        .scaleEffect(scale, anchor: .trailing)
                         .shadow(color: .black.opacity(lift), radius: 18, x: 6, y: 4)
                     spineGutter
                     Color.clear.frame(width: metrics.pageWidth, height: metrics.pageHeight)
@@ -478,6 +506,7 @@ private struct PageTurnComposite: View {
                             anchor: .trailing,
                             perspective: PageTurn.perspective
                         )
+                        .scaleEffect(scale, anchor: .trailing)
                         .shadow(color: .black.opacity(lift), radius: 18, x: 6, y: 4)
                     spineGutter
                     Color.clear.frame(width: metrics.pageWidth, height: metrics.pageHeight)
@@ -493,6 +522,7 @@ private struct PageTurnComposite: View {
                             anchor: .leading,
                             perspective: PageTurn.perspective
                         )
+                        .scaleEffect(scale, anchor: .leading)
                         .shadow(color: .black.opacity(lift), radius: 18, x: -6, y: 4)
                 }
             }
@@ -506,11 +536,9 @@ private struct PageTurnComposite: View {
 
 // MARK: - Cover
 
-/// The binder's outer plate. Shared by the idle spread and the turning composite
-/// so the cover does not change identity when a turn starts.
+/// The binder's outer plate — the object the pages sit inside.
 private struct BinderCover: View {
     let metrics: BinderMetrics
-    var castsShadow: Bool = true
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: metrics.coverCornerRadius, style: .continuous)
@@ -533,49 +561,10 @@ private struct BinderCover: View {
                 )
             )
             .shadow(
-                color: .black.opacity(castsShadow ? 0.35 : 0),
+                color: .black.opacity(0.35),
                 radius: metrics.cardWidth * 0.16,
                 y: metrics.cardWidth * 0.06
             )
-    }
-}
-
-/// The cover's padding drawn *over* the pages, with a hole for the spread.
-/// This is what makes a turning leaf pass under the cover rather than over it.
-private struct BinderCoverMat: View {
-    let metrics: BinderMetrics
-
-    var body: some View {
-        BinderCover(metrics: metrics, castsShadow: false)
-            .overlay {
-                RoundedRectangle(cornerRadius: metrics.pageCornerRadius, style: .continuous)
-                    .frame(
-                        width: metrics.pageWidth * 2 + metrics.spineWidth,
-                        height: metrics.pageHeight
-                    )
-                    .blendMode(.destinationOut)
-            }
-            .compositingGroup()
-            .allowsHitTesting(false)
-    }
-}
-
-/// One complete open spread. Isolated so a turn can keep two in play — the idle
-/// path uses this as-is; the turning path composites the same pieces around the rings.
-struct BinderSpread: View {
-    let page: Int
-    let metrics: BinderMetrics
-    @Binding var selectedDex: Int?
-
-    var body: some View {
-        ZStack {
-            BinderCover(metrics: metrics)
-            HStack(spacing: 0) {
-                PageSideView(page: page, side: .left, metrics: metrics, selectedDex: $selectedDex)
-                SpineView(metrics: metrics)
-                PageSideView(page: page, side: .right, metrics: metrics, selectedDex: $selectedDex)
-            }
-        }
     }
 }
 
