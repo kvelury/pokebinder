@@ -9,7 +9,7 @@ struct PageSideView: View {
     let page: Int
     let side: BinderSide
     let metrics: BinderMetrics
-    @Binding var selectedDex: Int?
+    @Binding var selection: CardSelection?
 
     @EnvironmentObject private var binder: BinderState
     @EnvironmentObject private var collection: CollectionStore
@@ -39,7 +39,7 @@ struct PageSideView: View {
             metrics: metrics,
             isOwned: slot.dexNumber.map(collection.isOwned) ?? false,
             emphasis: binder.emphasis(for: slot.dexNumber),
-            selectedDex: $selectedDex
+            selection: $selection
         )
     }
 

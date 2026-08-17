@@ -15,6 +15,7 @@ struct ContentView: View {
     @StateObject private var collection = CollectionStore()
     @StateObject private var notion = NotionManager()
     @State private var showSettings = false
+    @State private var selection: CardSelection?
     @FocusState private var searchFocused: Bool
 
     var body: some View {
@@ -23,7 +24,7 @@ struct ContentView: View {
 
             switch binder.viewMode {
             case .binder:
-                BinderView()
+                BinderView(selection: $selection)
             case .grid:
                 GridViewStub()
             }
@@ -35,9 +36,21 @@ struct ContentView: View {
                 }
             }
 
+            if let selection {
+                GeometryReader { geo in
+                    CardZoomOverlay(
+                        selection: selection,
+                        containerSize: geo.size,
+                        onDismissed: { self.selection = nil }
+                    )
+                }
+                .transition(.opacity)
+            }
+
             toolbarDivider
             keyboardShortcuts
         }
+        .coordinateSpace(.named(BinderSpace.content))
         .background(WindowConfigurator())
         .environmentObject(binder)
         .environmentObject(collection)
@@ -57,6 +70,7 @@ struct ContentView: View {
                 .environmentObject(collection)
                 .environmentObject(notion)
         }
+        .onChange(of: binder.viewMode) { _, _ in selection = nil }
         .task {
             if notion.isConnected {
                 await collection.use(NotionOwnershipBackend(manager: notion))
