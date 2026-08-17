@@ -34,6 +34,9 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 # we place in Contents/MacOS, which is the accented display name.
 cp .build/release/PokeBinder "$APP/Contents/MacOS/PokéBinder"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
+# Info.plist points CFBundleIconFile at this name; regenerate it with
+# Resources/AppIcon/make-icon.swift if the artwork changes.
+cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 
 echo "==> Signing (ad-hoc)…"
 codesign --force --sign - "$APP"
