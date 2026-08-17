@@ -8,6 +8,8 @@ struct SettingsSheet: View {
     @EnvironmentObject private var collection: CollectionStore
     @EnvironmentObject private var notion: NotionManager
 
+    @AppStorage(AppSettings.appearanceKey) private var appearance: AppAppearance = .system
+
     /// Defaulted to the database from the spec, but editable rather than hardcoded.
     @AppStorage(AppSettings.notionDatabaseIdKey)
     private var databaseId = AppSettings.defaultDatabaseId
@@ -18,6 +20,18 @@ struct SettingsSheet: View {
                 Section("Collection") {
                     LabeledContent("Source", value: collection.backendName)
                     LabeledContent("Collected", value: "\(collection.ownedCount) of \(collection.totalCount)")
+                }
+
+                Section("Theme") {
+                    Picker("Appearance", selection: $appearance) {
+                        ForEach(AppAppearance.allCases) { Text($0.title).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+
+                    Text("Auto follows the Appearance setting in System Settings.")
+                        .font(.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
                 Section("Notion") {
@@ -60,7 +74,7 @@ struct SettingsSheet: View {
             }
             .padding(14)
         }
-        .frame(width: 470, height: 490)
+        .frame(width: 470, height: 570)
         .onChange(of: notion.connectionState) { _, state in
             if case .connected = state {
                 Task { await collection.use(NotionOwnershipBackend(manager: notion)) }
