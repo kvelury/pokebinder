@@ -24,12 +24,17 @@ struct ContentView: View {
                 }
             }
 
+            toolbarDivider
             keyboardShortcuts
         }
         .background(WindowConfigurator())
         .environmentObject(binder)
         .environmentObject(collection)
         .toolbar { toolbarContent }
+        // A flat, opaque bar. Without this the titlebar stays translucent and the
+        // desktop behind the window shows through along the top edge.
+        .toolbarBackground(Theme.chrome, for: .windowToolbar)
+        .toolbarBackground(.visible, for: .windowToolbar)
         .sheet(isPresented: $showSettings) {
             SettingsSheet()
                 .environmentObject(collection)
@@ -37,6 +42,20 @@ struct ContentView: View {
         .task {
             await collection.load()
             binder.prefetchNeighbours()
+        }
+    }
+
+    /// A hairline where the toolbar ends and the content begins.
+    ///
+    /// The unified toolbar blends into the window background, which leaves the top of
+    /// the app with no edge at all. One rule reinstates it. It hangs off the top of
+    /// the content area, so it lands exactly on the titlebar boundary.
+    private var toolbarDivider: some View {
+        VStack(spacing: 0) {
+            Rectangle()
+                .fill(Theme.chromeDivider)
+                .frame(height: 1)
+            Spacer()
         }
     }
 
@@ -58,19 +77,23 @@ struct ContentView: View {
 
     // MARK: - Toolbar
     //
+    // Three clusters, the shape of a plain macOS toolbar: icon buttons at the left,
+    // search taking the whole middle, one action at the right.
+    //
     // No `if #available` may appear inside this builder: ToolbarContentBuilder's
     // buildLimitedAvailability is macOS 14.5+, and we target 14.0, so it would
     // resolve to the obsoleted overload. Nothing here needs one.
     //
-    // Toolbar items also get macOS 26's own Liquid Glass — never apply
-    // `.floatingChrome` here, or it becomes glass-on-glass.
+    // Everything here draws its own flat pill via `.pillChrome`. `.buttonStyle(.plain)`
+    // is what keeps macOS 26 from adding Liquid Glass of its own underneath — drop it
+    // and the pill becomes a pill inside a capsule of glass.
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .navigation) {
-            HStack(spacing: 18) {
-                viewModeTab(.binder)
-                viewModeTab(.grid)
+            HStack(spacing: 4) {
+                viewModeButton(.binder, icon: "book.closed")
+                viewModeButton(.grid, icon: "square.grid.2x2")
             }
         }
 
@@ -83,45 +106,49 @@ struct ContentView: View {
                 showSettings = true
             } label: {
                 Image(systemName: "gearshape")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(Theme.textSecondary)
+                    .frame(width: 30, height: 26)
+                    .contentShape(Capsule())
             }
             .buttonStyle(.plain)
             .help("Settings")
         }
     }
 
-    /// A bare text tab with a brass underline for the active view — no segmented
-    /// track. macOS 26 already draws a glass capsule around each toolbar item, so
-    /// any container of our own here would be an oval inside an oval.
-    private func viewModeTab(_ mode: ViewMode) -> some View {
+    /// Icon-only pills. Only the active one takes a fill, which is what makes the pair
+    /// read as a single selection rather than as two unrelated buttons — the same job
+    /// the brass underline used to do, without a second visual language for it.
+    private func viewModeButton(_ mode: ViewMode, icon: String) -> some View {
         let isActive = binder.viewMode == mode
         return Button {
             binder.viewMode = mode
         } label: {
-            VStack(spacing: 3) {
-                Text(mode.title)
-                    .font(Theme.nameFont(size: 13))
-                    .foregroundStyle(isActive ? Theme.brass : Theme.textSecondary)
-                Capsule()
-                    .fill(isActive ? Theme.brass : .clear)
-                    .frame(height: 2)
-            }
-            .fixedSize()
-            .contentShape(Rectangle())
+            Image(systemName: icon)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(isActive ? Theme.brass : Theme.textSecondary)
+                .frame(width: 32, height: 26)
+                .background(Capsule().fill(isActive ? Theme.controlFillActive : .clear))
+                .overlay(Capsule().strokeBorder(isActive ? Theme.controlStroke : .clear, lineWidth: 1))
+                .contentShape(Capsule())
         }
         .buttonStyle(.plain)
+        .help(mode.title)
         .animation(.easeOut(duration: 0.15), value: isActive)
     }
 
-    /// Also bare — icon, field, and match counter with no background of its own.
+    /// One wide pill holding icon, field, match counter and clear button. Search gets
+    /// the whole middle of the bar rather than a 190pt slot, because it is the only
+    /// control here anyone reaches for repeatedly.
     private var searchField: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 7) {
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 12))
+                .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(Theme.textSecondary)
 
-            TextField("Search", text: $binder.searchText)
+            TextField("Search Pokémon", text: $binder.searchText)
                 .textFieldStyle(.plain)
-                .frame(width: 190)
+                .font(.system(size: 13))
                 .focused($searchFocused)
                 .onSubmit { binder.nextMatch() }
 
@@ -135,13 +162,16 @@ struct ContentView: View {
                     binder.searchText = ""
                 } label: {
                     Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 12))
                         .foregroundStyle(Theme.textSecondary)
                 }
                 .buttonStyle(.plain)
                 .help("Clear search")
             }
         }
-        .frame(height: 26)
+        .padding(.horizontal, 12)
+        .frame(width: 380, height: 30)
+        .pillChrome(in: Capsule())
     }
 
     /// Zero-sized buttons purely to carry key equivalents. `.hidden()` would take

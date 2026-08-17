@@ -58,6 +58,26 @@ enum Theme {
     /// The dashed outline around a pocket whose card you don't own.
     static let missingOutline = Color.adaptive(light: 0xB6C3BA, dark: 0x39493F)
 
+    // MARK: Chrome
+    //
+    // The toolbar and the bottom bar are deliberately flat — a fill and a hairline,
+    // nothing more. The binder is the only object in the app that should read as
+    // physical, so the chrome around it stays out of the way.
+
+    /// The toolbar itself. Opaque on purpose: left translucent, the titlebar samples
+    /// whatever is behind the window and the desktop bleeds through the top edge.
+    static let chrome = Color.adaptive(light: 0xEDF2EE, dark: 0x101C17)
+    /// Hairline between the toolbar and the content below it.
+    static let chromeDivider = Color.adaptive(light: 0xC8D2CB, dark: 0x22302A)
+
+    /// Fill for a pill control — the search field, the pager, the count. Deliberately
+    /// a clear step lighter than `chrome`, so a pill reads as a well sunk into the bar
+    /// rather than as an outline drawn on it.
+    static let controlFill = Color.adaptive(light: 0xFFFFFF, dark: 0x1F2D26)
+    /// The same pill when it is the selected one of a set.
+    static let controlFillActive = Color.adaptive(light: 0xE3EBE5, dark: 0x2A3A32)
+    static let controlStroke = Color.adaptive(light: 0xD5DFD8, dark: 0x2E3D35)
+
     // MARK: Typography
 
     /// Pokédex numbers — mono, per the spec's typography note.
