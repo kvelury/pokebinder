@@ -3,10 +3,8 @@ import SwiftUI
 
 /// Which page is open, which view is showing, and what search is matching.
 ///
-/// Part 1 owns page navigation and match *computation*. Part 2 layers the motion
-/// and navigation behaviours on top: the 3D page turn, auto-flipping to the first
-/// match, and ⏎/⌘G cycling through `matches`. Those all drive `goTo(page:)`, so
-/// part 2 should not need to change how matching works.
+/// Every page change funnels through `goTo(page:)`. BinderView holds the 3D turn
+/// on `currentPage` — a new destination mid-flight retargets rather than queues.
 @MainActor
 final class BinderState: ObservableObject {
     @Published var viewMode: ViewMode = .binder
@@ -48,8 +46,9 @@ final class BinderState: ObservableObject {
     // MARK: - Navigation
     //
     // Every way of changing pages — arrows, the editable field, keyboard shortcuts,
-    // and (in part 2) search auto-flip — funnels through goTo(page:) so there is a
-    // single place for the page-turn animation to hook into.
+    // search auto-flip, swipe — funnels through goTo(page:). BinderView observes
+    // currentPage and retargets the in-flight turn; this method itself stays a
+    // clamp-and-set so Reduce Motion can skip the rotation without a flag here.
 
     func goTo(page: Int) {
         let clamped = min(max(page, 1), Pokedex.pageCount)
@@ -60,6 +59,12 @@ final class BinderState: ObservableObject {
 
     func next() { goTo(page: currentPage + 1) }
     func previous() { goTo(page: currentPage - 1) }
+
+    /// Warm a specific page (the swipe destination, which isn't current yet).
+    func prefetch(page: Int) {
+        let clamped = min(max(page, 1), Pokedex.pageCount)
+        Task { await ArtworkStore.shared.prefetch(page: clamped) }
+    }
 
     /// Warm the pages either side so a flip is never blank.
     func prefetchNeighbours() {

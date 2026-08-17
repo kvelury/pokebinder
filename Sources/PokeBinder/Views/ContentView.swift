@@ -184,6 +184,10 @@ struct ContentView: View {
                 .keyboardShortcut("g", modifiers: .command)
             Button("") { binder.previousMatch() }
                 .keyboardShortcut("g", modifiers: [.command, .shift])
+            Button("") { binder.previous() }
+                .keyboardShortcut(.leftArrow, modifiers: .command)
+            Button("") { binder.next() }
+                .keyboardShortcut(.rightArrow, modifiers: .command)
         }
         .frame(width: 0, height: 0)
         .opacity(0)
