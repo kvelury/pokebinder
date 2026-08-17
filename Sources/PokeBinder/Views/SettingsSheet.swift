@@ -1,19 +1,16 @@
 import SwiftUI
 
-/// Settings. Part 1 ships the shell and the database-id field; part 3 fills in the
-/// Notion section with a real "Connect to Notion" flow (OAuth via `NotionAuth`,
-/// ported from Dosa) and hands a Notion-backed `OwnershipBackend` to
-/// `CollectionStore.use(_:)`.
-///
-/// The Connect button is disabled rather than absent so the shape of the finished
-/// panel is visible now, and so part 3 has an obvious place to land.
+/// Settings. Notion OAuth + MCP live here: Connect/Disconnect, live status, and
+/// the workspace name. Connecting hands a `NotionOwnershipBackend` to
+/// `CollectionStore.use(_:)`; disconnecting falls back to `LocalOwnershipBackend`.
 struct SettingsSheet: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var collection: CollectionStore
+    @EnvironmentObject private var notion: NotionManager
 
     /// Defaulted to the database from the spec, but editable rather than hardcoded.
-    @AppStorage("notionDatabaseId")
-    private var databaseId = "187a66ca-0d0d-40da-b3aa-64f51adceb65"
+    @AppStorage(AppSettings.notionDatabaseIdKey)
+    private var databaseId = AppSettings.defaultDatabaseId
 
     var body: some View {
         VStack(spacing: 0) {
@@ -25,23 +22,23 @@ struct SettingsSheet: View {
 
                 Section("Notion") {
                     LabeledContent("Status") {
-                        HStack(spacing: 6) {
-                            Circle()
-                                .fill(Theme.textSecondary.opacity(0.5))
-                                .frame(width: 7, height: 7)
-                            Text("Not connected")
-                                .foregroundStyle(Theme.textSecondary)
-                        }
+                        statusView
                     }
 
                     TextField("Database ID", text: $databaseId)
                         .font(Theme.numberFont(size: 11))
                         .textFieldStyle(.roundedBorder)
 
-                    Button("Connect to Notion…") {}
-                        .disabled(true)
+                    connectionButton
 
-                    Text("Notion sync arrives in part 3. Until then the binder tracks your collection on this Mac, and everything else works exactly the same.")
+                    if let error = notion.errorMessage {
+                        Text(error)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Text("Connect your Notion account (opens the browser). Ownership is read from this database and the Owned toggle writes back to the matching row.")
                         .font(.caption)
                         .foregroundStyle(Theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -63,6 +60,51 @@ struct SettingsSheet: View {
             }
             .padding(14)
         }
-        .frame(width: 470, height: 470)
+        .frame(width: 470, height: 490)
+        .onChange(of: notion.connectionState) { _, state in
+            if case .connected = state {
+                Task { await collection.use(NotionOwnershipBackend(manager: notion)) }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var statusView: some View {
+        HStack(spacing: 6) {
+            switch notion.connectionState {
+            case .disconnected:
+                Circle()
+                    .fill(Theme.textSecondary.opacity(0.5))
+                    .frame(width: 7, height: 7)
+                Text("Not connected")
+                    .foregroundStyle(Theme.textSecondary)
+            case .connecting:
+                ProgressView()
+                    .controlSize(.mini)
+                Text("Waiting for authorization…")
+                    .foregroundStyle(Theme.textSecondary)
+            case .connected(let workspace):
+                Circle()
+                    .fill(Color.green)
+                    .frame(width: 7, height: 7)
+                Text(workspace)
+                    .foregroundStyle(Theme.textPrimary)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var connectionButton: some View {
+        switch notion.connectionState {
+        case .disconnected:
+            Button("Connect to Notion…") { notion.connect() }
+        case .connecting:
+            Button("Cancel") { notion.cancelConnect() }
+        case .connected:
+            Button("Disconnect", role: .destructive) {
+                notion.disconnect()
+                Task { await collection.use(LocalOwnershipBackend()) }
+            }
+        }
     }
 }

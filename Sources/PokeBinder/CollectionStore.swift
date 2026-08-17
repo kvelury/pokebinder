@@ -69,6 +69,12 @@ final class CollectionStore: ObservableObject {
     }
 
     func load() async {
+        // Paint the snapshot immediately so a relaunch with a stored token
+        // doesn't wait on the network. `NotionOwnershipBackend` is the only
+        // backend that has one; the protocol itself is unchanged.
+        if let notion = backend as? NotionOwnershipBackend, let cached = notion.cachedOwnership() {
+            owned = Set(cached.filter(\.value).map(\.key))
+        }
         isLoading = true
         defer { isLoading = false }
         do {
