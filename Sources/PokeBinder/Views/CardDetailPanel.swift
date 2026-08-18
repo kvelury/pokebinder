@@ -97,7 +97,12 @@ struct CardDetailPanel: View {
 
     private var detailsColumn: some View {
         VStack(alignment: .leading, spacing: metrics.detailsSpacing) {
-            TypeMatchupTable(dexNumber: dexNumber, metrics: metrics, isMuted: !isOwned)
+            TypeMatchupTable(
+                dexNumber: dexNumber,
+                metrics: metrics,
+                isMuted: !isOwned,
+                levelOverride: .full
+            )
 
             VStack(alignment: .leading, spacing: metrics.toggleGroupSpacing) {
                 Toggle("Owned", isOn: ownedBinding)

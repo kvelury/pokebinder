@@ -9,7 +9,7 @@ struct TypeMatchupTable: View {
     let dexNumber: Int
     let metrics: CardDetailMetrics
     var isMuted = false
-    /// When set, overrides the stored setting — the hover card shows one level less.
+    /// When set, overrides the stored hover setting (the focused card always uses Full).
     var levelOverride: MatchupDetailLevel? = nil
     /// The hover host is not hit-testable, so a Retry button there would be dead UI.
     var showsRetry = true

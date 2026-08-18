@@ -336,8 +336,8 @@ while browsing.
 **Types.** The detail panel presents `#035 | [type icons]` beneath the Pokémon name. Binder and detail
 icons share one component and use the SVG glyphs and colors from
 `duiker101/pokemon-type-svg-icons`. Hovering a card (binder or grid) for ~250ms presents a hover card
-beside it with that Pokémon's type info, one level shallower than Settings → Types → Matchups: Simple
-is types only (icon + readable name), Advanced adds Strong against and Weak to, Full shows every row.
+beside it with that Pokémon's type info at Settings → Types → Hover matchups: Simple shows Strong
+against and Weak to, Advanced adds resistances and immunities, and Full adds offensive coverage gaps.
 The hover card is placed beside the pocket — the side with more room, falling back to above/below if
 neither side fits — and scales on the same `CardDetailMetrics` solve as the click-open panel, in a
 narrower frame matching the panel's details column. Per-icon type-name tooltips are suppressed on
@@ -351,7 +351,8 @@ Esc, or the ✕ on the panel. Clicking the panel itself does not dismiss (it wou
 switch). The insertion transition is part of the click's state-change transaction, so it begins
 without waiting for an `onAppear` callback. Reduce Motion replaces the travel and scale with the
 quick fade. Pointing at a card without clicking is the hover card above — no scrim, not dismissible,
-and never hit-tested so a click still opens this panel.
+and never hit-tested so a click still opens this panel. The focused card always shows Full matchup
+details, independent of the hover setting.
 
 The overlay is hosted in `ContentView` so it can sit above the pager. That is not enough on its own
 for the trackpad. `TrackpadPageTurnCatcher` installs a local `NSEvent` scroll-wheel monitor that
@@ -382,9 +383,8 @@ Preference keys follow `AppSettings`: `static let <name>Key = "pokebinder.<name>
 - **Collection** — the active backend name and the collected count.
 - **Theme** — Classic/Liquid Glass style, the four glass palettes, and appearance (below).
 - **Types** — Current or original Gen I assignments. Current is the default; Gen I removes later
-  Steel/Fairy changes from the seven affected Pokémon. Matchup detail (Simple / Advanced / Full)
-  controls two surfaces: the click-open panel shows the selected level, and the hover card shows
-  one level less (types only at Simple, Strong against / Weak to at Advanced, every row at Full).
+  Steel/Fairy changes from the seven affected Pokémon. Hover matchups (Simple / Advanced / Full)
+  controls only the hover card's rows; the click-open focused card always shows Full details.
 - **Notion** — Connect/Disconnect, live status, workspace name, the database id field, and the
   refresh interval (`Manual`, `1`, `3`, `5`, `8`, or a custom whole-minute value). Automatic
   refresh runs only while the app is open and active; changing the interval restarts the timer.

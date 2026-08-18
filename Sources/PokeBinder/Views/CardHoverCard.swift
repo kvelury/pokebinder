@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// The hover counterpart to `CardDetailPanel`: same type information, no artwork,
-/// no ownership control, and one detail level shallower. Presented by
+/// The hover counterpart to `CardDetailPanel`: type information at the level chosen
+/// in Settings, no artwork, and no ownership control. Presented by
 /// `HoverTooltipHost`, so it is never hit-tested and never dismissible.
 struct CardHoverCard: View {
     let dexNumber: Int
@@ -13,26 +13,21 @@ struct CardHoverCard: View {
     @AppStorage(AppSettings.matchupDetailLevelKey) private var detailLevel: MatchupDetailLevel = .simple
 
     var body: some View {
-        let rowLevel = detailLevel.hoverRowLevel
         VStack(alignment: .leading, spacing: metrics.hoverSectionSpacing) {
             header
             Divider()
             typeRows
-            if let rowLevel {
-                Divider()
-                TypeMatchupTable(
-                    dexNumber: dexNumber,
-                    metrics: metrics,
-                    isMuted: !isOwned,
-                    levelOverride: rowLevel,
-                    showsRetry: false
-                )
-            }
+            Divider()
+            TypeMatchupTable(
+                dexNumber: dexNumber,
+                metrics: metrics,
+                isMuted: !isOwned,
+                levelOverride: detailLevel,
+                showsRetry: false
+            )
         }
         .padding(metrics.hoverPadding)
-        // Types-only stays as small as its content; with rows, match the panel's
-        // details-column width so the chips wrap identically.
-        .modifier(HoverWidth(width: rowLevel == nil ? nil : metrics.hoverWidth))
+        .frame(width: metrics.hoverWidth)
         .panelChrome(in: RoundedRectangle(
             cornerRadius: metrics.hoverCornerRadius(liquidGlass: theme.isLiquidGlass),
             style: .continuous
@@ -71,20 +66,6 @@ struct CardHoverCard: View {
                         .foregroundStyle(theme.textPrimary)
                 }
             }
-        }
-    }
-}
-
-/// `.frame(width:)` when a width is given, `.fixedSize()` when it is not. A plain
-/// `if` in the modifier chain will not type-check.
-private struct HoverWidth: ViewModifier {
-    let width: CGFloat?
-
-    func body(content: Content) -> some View {
-        if let width {
-            content.frame(width: width)
-        } else {
-            content.fixedSize()
         }
     }
 }
