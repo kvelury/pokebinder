@@ -271,3 +271,68 @@ struct BinderMetrics {
         return BinderMetrics(cardWidth: max(60, min(byWidth, byHeight)))
     }
 }
+
+/// Every card-detail measurement in one place, so the panel scales as one object with
+/// the window the way `BinderMetrics` scales the spread.
+///
+/// `scale == 1` reproduces the hand-tuned panel at the app's default window size
+/// (`PokeBinderApp`'s `.defaultSize`, 1320x900). Driven by the overlay's safe rect
+/// rather than the raw window, so the Liquid Glass search bar's reserved strip is
+/// already accounted for and both themes land on the same panel size.
+struct CardDetailMetrics {
+    /// `CardZoomOverlay.safePanelRect` at the default window size. Re-measure this if
+    /// the toolbar chrome or `safePanelRect`'s insets ever change — it is the anchor
+    /// that keeps the panel identical to its hand-tuned layout at the default size.
+    static let referenceSafe = CGSize(width: 1272, height: 770)
+    /// Below this the panel stops being legible; above it, absurd.
+    static let minScale: CGFloat = 0.9
+    static let maxScale: CGFloat = 2.0
+
+    let scale: CGFloat
+
+    // Frame
+    var width: CGFloat { 600 * scale }
+    var artSize: CGFloat { 200 * scale }
+    var padding: CGFloat { 16 * scale }
+    var columnSpacing: CGFloat { 14 * scale }
+    var identitySpacing: CGFloat { 8 * scale }
+    var titleBlockSpacing: CGFloat { 3 * scale }
+    var identityRowSpacing: CGFloat { 8 * scale }
+    var identityDividerHeight: CGFloat { 16 * scale }
+    var detailsSpacing: CGFloat { 12 * scale }
+    var toggleGroupSpacing: CGFloat { 6 * scale }
+    var glyphInset: CGFloat { 10 * scale }
+    var glyphSize: CGFloat { 22 * scale }
+    var glyphIconSize: CGFloat { 10 * scale }
+
+    func cornerRadius(liquidGlass: Bool) -> CGFloat { (liquidGlass ? 24 : 16) * scale }
+
+    // Identity column
+    var nameFontSize: CGFloat { 20 * scale }
+    var numberFontSize: CGFloat { 26 * scale }        // bumped 2x from 13
+    var identityIconSize: CGFloat { 48 * scale }      // bumped 2.4x from 20
+    var identityIconSpacing: CGFloat { 8 * scale }    // was 4; widened for the bigger icons
+    var ownedLabelFontSize: CGFloat { 14 * scale }
+    var errorFontSize: CGFloat { 10 * scale }
+
+    // Matchup table
+    var matchupRowSpacing: CGFloat { 10 * scale }
+    var matchupColumnSpacing: CGFloat { 10 * scale }
+    var matchupTitleFontSize: CGFloat { 11 * scale }
+    var matchupTitleGap: CGFloat { 4 * scale }
+    var chipIconSize: CGFloat { 36 * scale }          // bumped 2x from 18
+    var chipLabelFontSize: CGFloat { 16 * scale }     // bumped 2x from 8
+    var chipLabelGap: CGFloat { 2 * scale }
+    var chipSpacing: CGFloat { 8 * scale }            // was 6; widened for the bigger chips
+
+    /// Solve the scale that keeps the panel's footprint constant relative to the window.
+    /// `min` across both axes so a short window shrinks the panel rather than pushing it
+    /// into the scroll fallback.
+    static func fitting(safe: CGSize) -> CardDetailMetrics {
+        let raw = min(
+            safe.width / referenceSafe.width,
+            safe.height / referenceSafe.height
+        )
+        return CardDetailMetrics(scale: min(max(raw, minScale), maxScale))
+    }
+}

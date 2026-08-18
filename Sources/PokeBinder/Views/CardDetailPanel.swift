@@ -10,13 +10,9 @@ import SwiftUI
 /// The `Owned` toggle writes through `CollectionStore`, which is optimistic and
 /// reverts on failure. Persist errors surface under the toggle.
 struct CardDetailPanel: View {
-    /// Compact enough to sit in the window centre without filling the scrim.
-    /// Art plus a two-row matchup grid still fit the 1000-point minimum width.
-    static let width: CGFloat = 600
-    static let artSize: CGFloat = 200
-
     let dexNumber: Int
-    var maxWidth: CGFloat = width
+    let metrics: CardDetailMetrics
+    var maxWidth: CGFloat
     var maxHeight: CGFloat = .infinity
     let onClose: () -> Void
 
@@ -34,64 +30,64 @@ struct CardDetailPanel: View {
             .scrollBounceBehavior(.basedOnSize)
             .frame(maxHeight: maxHeight)
         }
-        .frame(width: min(Self.width, maxWidth))
+        .frame(width: min(metrics.width, maxWidth))
         .fixedSize(horizontal: false, vertical: true)
     }
 
     private var chromedBody: some View {
         panelBody
             .panelChrome(in: RoundedRectangle(
-                cornerRadius: theme.isLiquidGlass ? 24 : 16,
+                cornerRadius: metrics.cornerRadius(liquidGlass: theme.isLiquidGlass),
                 style: .continuous
             ))
             .overlay(alignment: .topLeading) {
                 pageIndicator
-                    .padding(10)
+                    .padding(metrics.glyphInset)
             }
             .overlay(alignment: .topTrailing) {
                 closeButton
-                    .padding(10)
+                    .padding(metrics.glyphInset)
             }
     }
 
     private var panelBody: some View {
-        HStack(alignment: .top, spacing: 14) {
+        HStack(alignment: .top, spacing: metrics.columnSpacing) {
             identityColumn
-                .frame(width: Self.artSize)
+                .frame(width: metrics.artSize)
 
             Divider()
 
             detailsColumn
         }
-        .padding(16)
-        .frame(width: min(Self.width, maxWidth))
+        .padding(metrics.padding)
+        .frame(width: min(metrics.width, maxWidth))
         .fixedSize(horizontal: false, vertical: true)
     }
 
     private var identityColumn: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: metrics.identitySpacing) {
             CardArtworkView(dexNumber: dexNumber)
-                .frame(width: Self.artSize, height: Self.artSize)
+                .frame(width: metrics.artSize, height: metrics.artSize)
                 .saturation(isOwned ? 1 : 0)
                 .opacity(isOwned ? 1 : 0.5)
                 .animation(ownershipMotion, value: isOwned)
 
-            VStack(spacing: 3) {
+            VStack(spacing: metrics.titleBlockSpacing) {
                 Text(Pokedex.name(for: dexNumber))
-                    .font(theme.nameFont(size: 20))
+                    .font(theme.nameFont(size: metrics.nameFontSize))
                     .foregroundStyle(theme.textPrimary)
-                HStack(spacing: 8) {
+                HStack(spacing: metrics.identityRowSpacing) {
                     Text("#\(Pokedex.formattedNumber(dexNumber))")
-                        .font(theme.numberFont(size: 13))
+                        .font(theme.numberFont(size: metrics.numberFontSize))
                         .foregroundStyle(theme.textSecondary)
 
                     Divider()
-                        .frame(height: 16)
+                        .frame(height: metrics.identityDividerHeight)
 
                     TypeIconGroup(
                         types: Pokedex.types(for: dexNumber, era: typeEra),
-                        size: 20,
-                        spacing: 4,
+                        size: metrics.identityIconSize,
+                        spacing: metrics.identityIconSpacing,
                         isMuted: !isOwned
                     )
                 }
@@ -100,18 +96,19 @@ struct CardDetailPanel: View {
     }
 
     private var detailsColumn: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            TypeMatchupTable(dexNumber: dexNumber, isMuted: !isOwned)
+        VStack(alignment: .leading, spacing: metrics.detailsSpacing) {
+            TypeMatchupTable(dexNumber: dexNumber, metrics: metrics, isMuted: !isOwned)
 
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: metrics.toggleGroupSpacing) {
                 Toggle("Owned", isOn: ownedBinding)
                     .toggleStyle(.switch)
+                    .controlSize(metrics.scale >= 1.3 ? .large : .regular)
                     .tint(theme.brass)
-                    .font(theme.nameFont(size: 14))
+                    .font(theme.nameFont(size: metrics.ownedLabelFontSize))
 
                 if let message = collection.errorMessage {
                     Text(message)
-                        .font(.caption)
+                        .font(.system(size: metrics.errorFontSize))
                         .foregroundStyle(.red)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -143,9 +140,9 @@ struct CardDetailPanel: View {
 
     private func cornerGlyph(_ systemName: String) -> some View {
         let glyph = Image(systemName: systemName)
-            .font(.system(size: 10, weight: .bold))
+            .font(.system(size: metrics.glyphIconSize, weight: .bold))
             .foregroundStyle(theme.textSecondary)
-            .frame(width: 22, height: 22)
+            .frame(width: metrics.glyphSize, height: metrics.glyphSize)
             .contentShape(Circle())
 
         return Group {
