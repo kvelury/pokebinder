@@ -10,10 +10,10 @@ import SwiftUI
 /// The `Owned` toggle writes through `CollectionStore`, which is optimistic and
 /// reverts on failure. Persist errors surface under the toggle.
 struct CardDetailPanel: View {
-    /// Wide enough for art plus a two-row matchup grid, still inside the
-    /// app's 1000-point minimum window after overlay margins.
-    static let width: CGFloat = 900
-    static let artSize: CGFloat = 280
+    /// Compact enough to sit in the window centre without filling the scrim.
+    /// Art plus a two-row matchup grid still fit the 1000-point minimum width.
+    static let width: CGFloat = 600
+    static let artSize: CGFloat = 200
 
     let dexNumber: Int
     var maxWidth: CGFloat = width
@@ -50,7 +50,7 @@ struct CardDetailPanel: View {
     }
 
     private var panelBody: some View {
-        HStack(alignment: .top, spacing: 20) {
+        HStack(alignment: .top, spacing: 14) {
             identityColumn
                 .frame(width: Self.artSize)
 
@@ -58,52 +58,51 @@ struct CardDetailPanel: View {
 
             detailsColumn
         }
-        .padding(24)
+        .padding(16)
         .frame(width: min(Self.width, maxWidth))
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     private var identityColumn: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 8) {
             CardArtworkView(dexNumber: dexNumber)
                 .frame(width: Self.artSize, height: Self.artSize)
                 .saturation(isOwned ? 1 : 0)
                 .opacity(isOwned ? 1 : 0.5)
                 .animation(ownershipMotion, value: isOwned)
 
-            VStack(spacing: 4) {
+            VStack(spacing: 3) {
                 Text(Pokedex.name(for: dexNumber))
-                    .font(theme.nameFont(size: 22))
+                    .font(theme.nameFont(size: 20))
                     .foregroundStyle(theme.textPrimary)
-                HStack(spacing: 11) {
+                HStack(spacing: 8) {
                     Text("#\(Pokedex.formattedNumber(dexNumber))")
-                        .font(theme.numberFont(size: 14))
+                        .font(theme.numberFont(size: 13))
                         .foregroundStyle(theme.textSecondary)
 
                     Divider()
-                        .frame(height: 20)
+                        .frame(height: 16)
 
                     TypeIconGroup(
                         types: Pokedex.types(for: dexNumber, era: typeEra),
-                        size: 24,
-                        spacing: 5,
+                        size: 20,
+                        spacing: 4,
                         isMuted: !isOwned
                     )
                 }
             }
         }
-        .frame(maxWidth: .infinity)
     }
 
     private var detailsColumn: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 12) {
             TypeMatchupTable(dexNumber: dexNumber, isMuted: !isOwned)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 6) {
                 Toggle("Owned", isOn: ownedBinding)
                     .toggleStyle(.switch)
                     .tint(theme.brass)
-                    .font(theme.nameFont(size: 15))
+                    .font(theme.nameFont(size: 14))
 
                 if let message = collection.errorMessage {
                     Text(message)
@@ -113,7 +112,7 @@ struct CardDetailPanel: View {
                 }
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
     private var pageDetailsLabel: String {

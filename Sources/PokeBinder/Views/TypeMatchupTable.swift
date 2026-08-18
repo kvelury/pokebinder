@@ -21,9 +21,10 @@ struct TypeMatchupTable: View {
             case .loading:
                 ProgressView()
                     .controlSize(.small)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
             case .failed(let message):
-                VStack(spacing: 8) {
+                VStack(spacing: 6) {
                     Text(message)
                         .font(.caption)
                         .foregroundStyle(theme.textSecondary)
@@ -33,20 +34,20 @@ struct TypeMatchupTable: View {
                         .buttonStyle(.plain)
                         .foregroundStyle(theme.brass)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(maxWidth: .infinity)
             case .ready(let summary):
                 let rows = summary.rows(for: detailLevel)
                 if rows.isEmpty {
                     Text("No matchups to show.")
                         .font(.caption)
                         .foregroundStyle(theme.textSecondary)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .frame(maxWidth: .infinity)
                 } else {
                     let columns = Array(
-                        repeating: GridItem(.flexible(minimum: 96), spacing: 16, alignment: .topLeading),
+                        repeating: GridItem(.flexible(minimum: 72), spacing: 10, alignment: .topLeading),
                         count: columnCount(for: rows.count)
                     )
-                    LazyVGrid(columns: columns, alignment: .leading, spacing: 16) {
+                    LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
                         ForEach(rows) { row in
                             matchupRow(row)
                         }
@@ -69,12 +70,12 @@ struct TypeMatchupTable: View {
 
     @ViewBuilder
     private func matchupRow(_ row: TypeMatchupRow) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 4) {
             Text(row.kind.title)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(theme.textSecondary)
 
-            FlowLayout(spacing: 8) {
+            FlowLayout(spacing: 6) {
                 ForEach(row.entries) { entry in
                     TypeMatchupChip(entry: entry, isMuted: isMuted)
                 }
@@ -115,15 +116,15 @@ private struct TypeMatchupChip: View {
     @Environment(\.appTheme) private var theme
 
     var body: some View {
-        VStack(spacing: 2) {
+        VStack(spacing: 1) {
             TypeIconView(
                 type: entry.type,
-                size: 22,
+                size: 18,
                 isMuted: isMuted,
                 tooltip: "\(entry.type.title) \(entry.label)"
             )
             Text(entry.label)
-                .font(theme.numberFont(size: 9))
+                .font(theme.numberFont(size: 8))
                 .foregroundStyle(theme.textSecondary)
         }
         .accessibilityHidden(true)
