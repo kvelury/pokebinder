@@ -7,6 +7,7 @@ import SwiftUI
 /// and Full is 2×3.
 struct TypeMatchupTable: View {
     let dexNumber: Int
+    let metrics: CardDetailMetrics
     var isMuted = false
 
     @Environment(\.appTheme) private var theme
@@ -44,9 +45,9 @@ struct TypeMatchupTable: View {
                         .frame(maxWidth: .infinity)
                 } else {
                     let columns = columnCount(for: rows.count)
-                    VStack(alignment: .leading, spacing: 10) {
+                    VStack(alignment: .leading, spacing: metrics.matchupRowSpacing) {
                         ForEach(Array(stride(from: 0, to: rows.count, by: columns)), id: \.self) { start in
-                            HStack(alignment: .top, spacing: 10) {
+                            HStack(alignment: .top, spacing: metrics.matchupColumnSpacing) {
                                 ForEach(Array(rows[start..<min(start + columns, rows.count)])) { row in
                                     matchupRow(row)
                                 }
@@ -71,14 +72,14 @@ struct TypeMatchupTable: View {
 
     @ViewBuilder
     private func matchupRow(_ row: TypeMatchupRow) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: metrics.matchupTitleGap) {
             Text(row.kind.title)
-                .font(.caption.weight(.semibold))
+                .font(.system(size: metrics.matchupTitleFontSize, weight: .semibold))
                 .foregroundStyle(theme.textSecondary)
 
-            FlowLayout(spacing: 6) {
+            FlowLayout(spacing: metrics.chipSpacing) {
                 ForEach(row.entries) { entry in
-                    TypeMatchupChip(entry: entry, isMuted: isMuted)
+                    TypeMatchupChip(entry: entry, metrics: metrics, isMuted: isMuted)
                 }
             }
         }
@@ -112,20 +113,20 @@ private enum LoadState {
 
 private struct TypeMatchupChip: View {
     let entry: TypeMatchupEntry
+    let metrics: CardDetailMetrics
     var isMuted = false
 
     @Environment(\.appTheme) private var theme
 
     var body: some View {
-        VStack(spacing: 1) {
+        VStack(spacing: metrics.chipLabelGap) {
             TypeIconView(
                 type: entry.type,
-                size: 18,
-                isMuted: isMuted,
-                tooltip: "\(entry.type.title) \(entry.label)"
+                size: metrics.chipIconSize,
+                isMuted: isMuted
             )
             Text(entry.label)
-                .font(theme.numberFont(size: 8))
+                .font(theme.numberFont(size: metrics.chipLabelFontSize))
                 .foregroundStyle(theme.textSecondary)
         }
         .accessibilityHidden(true)

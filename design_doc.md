@@ -250,10 +250,12 @@ Per the spec: **mono for numbers** (`Theme.numberFont`), **rounded sans for name
 
 `BinderMetrics` derives every measurement from a single `cardWidth`, so the whole spread scales as
 one object and never distorts. Real cards are 2.5" × 3.5", so `cardAspect = 5/7`.
-`BinderMetrics.fitting(_:)` solves for the largest card that fits the window.
+`BinderMetrics.fitting(_:)` solves for the largest card that fits the window. `CardDetailMetrics`
+is the popup's equivalent of `BinderMetrics` — one derived scale, every measurement a multiple of it.
 
 ⚠️ `fitting(_:)` restates the padding ratios as literals. Change `pagePadding`, `coverPadding` or
-`cardGap` and you must mirror it there.
+`cardGap` and you must mirror it there. `CardDetailMetrics.referenceSafe` must be re-measured if the
+toolbar chrome or `CardZoomOverlay.safePanelRect`'s insets change.
 
 ### Chrome — two visual systems
 

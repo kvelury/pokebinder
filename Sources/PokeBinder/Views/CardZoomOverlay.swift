@@ -32,6 +32,7 @@ struct CardZoomOverlay: View {
     var body: some View {
         GeometryReader { geo in
             let safe = Self.safePanelRect(in: geo.size, liquidGlass: theme.isLiquidGlass)
+            let metrics = CardDetailMetrics.fitting(safe: safe.size)
             ZStack {
                 if visibleSelection != nil {
                     scrim
@@ -42,6 +43,7 @@ struct CardZoomOverlay: View {
                 if let visibleSelection {
                     CardDetailPanel(
                         dexNumber: visibleSelection.dexNumber,
+                        metrics: metrics,
                         maxWidth: safe.width,
                         maxHeight: safe.height,
                         onClose: dismiss
@@ -110,9 +112,11 @@ struct CardZoomOverlay: View {
     }
 
     private func pocketTravel(for selection: CardSelection, in containerSize: CGSize) -> (scale: CGFloat, offset: CGSize) {
-        let landing = landingPoint(in: containerSize)
+        let safe = Self.safePanelRect(in: containerSize, liquidGlass: theme.isLiquidGlass)
+        let metrics = CardDetailMetrics.fitting(safe: safe.size)
+        let landing = CGPoint(x: safe.midX, y: safe.midY)
         return (
-            scale: max(0.05, selection.sourceRect.width / CardDetailPanel.width),
+            scale: max(0.05, selection.sourceRect.width / metrics.width),
             offset: CGSize(
                 width: selection.sourceRect.midX - landing.x,
                 height: selection.sourceRect.midY - landing.y
