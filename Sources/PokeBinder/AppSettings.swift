@@ -8,6 +8,7 @@ enum AppSettings {
     static let appStyleKey = "pokebinder.appStyle"
     static let glassPaletteKey = "pokebinder.glassPalette"
     static let typeEraKey = "pokebinder.typeEra"
+    static let matchupDetailLevelKey = "pokebinder.matchupDetailLevel"
 
     static let notionClientIdKey = "pokebinder.notionClientId"
     static let notionAccessTokenKey = "pokebinder.notionAccessToken"

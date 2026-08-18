@@ -62,6 +62,10 @@ enum Pokedex {
         PokemonTypeCatalog.types(for: dex, era: era)
     }
 
+    static func matchupSummary(for dex: Int, era: TypeEra) async throws -> TypeMatchupSummary {
+        try await TypeMatchupStore.shared.summary(types: types(for: dex, era: era), era: era)
+    }
+
     static func artworkURL(for dex: Int) -> URL {
         URL(string: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/\(dex).png")!
     }

@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// The selected card's detail panel, quickly animated from its pocket to the window centre.
+/// The selected card's detail panel, quickly animated from its pocket into the
+/// safe content area — never into the floating search controls.
 ///
 /// Opening still uses an insertion transition in the click's transaction, so motion
 /// starts on the same frame. Closing does not tear the overlay down immediately —
@@ -30,6 +31,7 @@ struct CardZoomOverlay: View {
 
     var body: some View {
         GeometryReader { geo in
+            let safe = Self.safePanelRect(in: geo.size, liquidGlass: theme.isLiquidGlass)
             ZStack {
                 if visibleSelection != nil {
                     scrim
@@ -38,11 +40,16 @@ struct CardZoomOverlay: View {
                 }
 
                 if let visibleSelection {
-                    CardDetailPanel(dexNumber: visibleSelection.dexNumber, onClose: dismiss)
-                        .scaleEffect(panelScale(for: visibleSelection, in: geo.size), anchor: .center)
-                        .position(panelPosition(for: visibleSelection, in: geo.size))
-                        .opacity(isClosing ? 0 : 1)
-                        .transition(panelTransition(for: visibleSelection, in: geo.size))
+                    CardDetailPanel(
+                        dexNumber: visibleSelection.dexNumber,
+                        maxWidth: safe.width,
+                        maxHeight: safe.height,
+                        onClose: dismiss
+                    )
+                    .scaleEffect(panelScale(for: visibleSelection, in: geo.size), anchor: .center)
+                    .position(panelPosition(for: visibleSelection, in: geo.size))
+                    .opacity(isClosing ? 0 : 1)
+                    .transition(panelTransition(for: visibleSelection, in: geo.size))
                 }
             }
             .frame(width: geo.size.width, height: geo.size.height)
@@ -58,10 +65,28 @@ struct CardZoomOverlay: View {
         }
     }
 
+    /// Liquid Glass search controls sit in this overlay's coordinate space
+    /// (48pt bar + 10pt top inset). Classic uses the window toolbar, so only
+    /// a regular margin is reserved there.
+    static func safePanelRect(in size: CGSize, liquidGlass: Bool) -> CGRect {
+        let topReserved: CGFloat = liquidGlass ? 10 + 48 + 16 : 16
+        let margin: CGFloat = 24
+        let x = margin
+        let y = topReserved
+        let width = max(320, size.width - margin * 2)
+        let height = max(280, size.height - topReserved - margin)
+        return CGRect(x: x, y: y, width: width, height: height)
+    }
+
     private var scrim: some View {
         (theme.isLiquidGlass && !reduceTransparency ? theme.modalScrim : Color.black.opacity(0.45))
             .contentShape(Rectangle())
             .onTapGesture { dismiss() }
+    }
+
+    private func landingPoint(in containerSize: CGSize) -> CGPoint {
+        let safe = Self.safePanelRect(in: containerSize, liquidGlass: theme.isLiquidGlass)
+        return CGPoint(x: safe.midX, y: safe.midY)
     }
 
     private func panelScale(for selection: CardSelection, in containerSize: CGSize) -> CGFloat {
@@ -70,8 +95,7 @@ struct CardZoomOverlay: View {
     }
 
     private func panelPosition(for selection: CardSelection, in containerSize: CGSize) -> CGPoint {
-        let centre = CGPoint(x: containerSize.width / 2, y: containerSize.height / 2)
-        if !isClosing || reduceMotion { return centre }
+        if !isClosing || reduceMotion { return landingPoint(in: containerSize) }
         return CGPoint(x: selection.sourceRect.midX, y: selection.sourceRect.midY)
     }
 
@@ -86,12 +110,12 @@ struct CardZoomOverlay: View {
     }
 
     private func pocketTravel(for selection: CardSelection, in containerSize: CGSize) -> (scale: CGFloat, offset: CGSize) {
-        let centre = CGPoint(x: containerSize.width / 2, y: containerSize.height / 2)
+        let landing = landingPoint(in: containerSize)
         return (
             scale: max(0.05, selection.sourceRect.width / CardDetailPanel.width),
             offset: CGSize(
-                width: selection.sourceRect.midX - centre.x,
-                height: selection.sourceRect.midY - centre.y
+                width: selection.sourceRect.midX - landing.x,
+                height: selection.sourceRect.midY - landing.y
             )
         )
     }

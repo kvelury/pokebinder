@@ -13,6 +13,7 @@ struct PokeBinderApp: App {
                 .frame(minWidth: 1000, minHeight: 780)
                 // `initial: true` applies the saved choice on launch as well as on change.
                 .onChange(of: appearance, initial: true) { _, new in new.apply() }
+                .task { await TypeMatchupStore.shared.warmup() }
         }
         .defaultSize(width: 1320, height: 900)
         .windowToolbarStyle(.unified)

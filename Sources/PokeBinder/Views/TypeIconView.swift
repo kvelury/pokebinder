@@ -34,6 +34,7 @@ struct TypeIconView: View {
     let type: PokemonType
     let size: CGFloat
     var isMuted = false
+    var tooltip: String? = nil
 
     var body: some View {
         ZStack {
@@ -57,7 +58,7 @@ struct TypeIconView: View {
         .saturation(isMuted ? 0.2 : 1)
         .opacity(isMuted ? 0.72 : 1)
         .accessibilityLabel(type.title)
-        .hoverTooltip(type.title)
+        .hoverTooltip(tooltip ?? type.title)
     }
 }
 
