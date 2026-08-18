@@ -2,6 +2,11 @@ import SwiftUI
 
 /// The selected card's detail panel, quickly animated from its pocket into the
 /// safe content area — never into the floating search controls.
+///
+/// Opening still uses an insertion transition in the click's transaction, so motion
+/// starts on the same frame. Closing does not tear the overlay down immediately —
+/// it animates the live panel back to the pocket and removes it only after the
+/// spring has logically completed, which avoids the last-frame landing snap.
 struct CardZoomOverlay: View {
     @Binding var selection: CardSelection?
 
@@ -9,45 +14,54 @@ struct CardZoomOverlay: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
+    /// Held copy so the panel can finish travelling after `selection` is cleared.
+    @State private var presentedSelection: CardSelection?
+    @State private var isClosing = false
+    @State private var closeGeneration = 0
+    @State private var suppressSelectionNil = false
+
     private var animation: Animation {
         reduceMotion ? AppMotion.quick : AppMotion.cardDetail
+    }
+
+    /// Prefer the live binding so an open is inserted in the same transaction as the click.
+    private var visibleSelection: CardSelection? {
+        selection ?? presentedSelection
     }
 
     var body: some View {
         GeometryReader { geo in
             let safe = Self.safePanelRect(in: geo.size, liquidGlass: theme.isLiquidGlass)
             ZStack {
-                if selection != nil {
+                if visibleSelection != nil {
                     scrim
+                        .opacity(isClosing ? 0 : 1)
                         .transition(.opacity)
                 }
 
-                if let selection {
-                    VStack(spacing: 0) {
-                        Color.clear.frame(height: safe.minY)
-                        HStack(spacing: 0) {
-                            Spacer(minLength: 0)
-                            CardDetailPanel(
-                                dexNumber: selection.dexNumber,
-                                maxWidth: safe.width,
-                                maxHeight: safe.height,
-                                onClose: dismiss
-                            )
-                            Spacer(minLength: 0)
-                        }
-                        .frame(width: geo.size.width, height: safe.height)
-                        Spacer(minLength: 0)
-                    }
-                    .transition(panelTransition(for: selection, landing: CGPoint(x: safe.midX, y: safe.midY)))
+                if let visibleSelection {
+                    CardDetailPanel(
+                        dexNumber: visibleSelection.dexNumber,
+                        maxWidth: safe.width,
+                        maxHeight: safe.height,
+                        onClose: dismiss
+                    )
+                    .scaleEffect(panelScale(for: visibleSelection, in: geo.size), anchor: .center)
+                    .position(panelPosition(for: visibleSelection, in: geo.size))
+                    .opacity(isClosing ? 0 : 1)
+                    .transition(panelTransition(for: visibleSelection, in: geo.size))
                 }
             }
             .frame(width: geo.size.width, height: geo.size.height)
             .background {
-                if selection != nil {
+                if visibleSelection != nil && !isClosing {
                     escapeKey
                 }
             }
-            .allowsHitTesting(selection != nil)
+            .allowsHitTesting(visibleSelection != nil && !isClosing)
+        }
+        .onChange(of: selection) { _, newValue in
+            sync(to: newValue)
         }
     }
 
@@ -70,17 +84,40 @@ struct CardZoomOverlay: View {
             .onTapGesture { dismiss() }
     }
 
-    private func panelTransition(for selection: CardSelection, landing: CGPoint) -> AnyTransition {
+    private func landingPoint(in containerSize: CGSize) -> CGPoint {
+        let safe = Self.safePanelRect(in: containerSize, liquidGlass: theme.isLiquidGlass)
+        return CGPoint(x: safe.midX, y: safe.midY)
+    }
+
+    private func panelScale(for selection: CardSelection, in containerSize: CGSize) -> CGFloat {
+        if !isClosing || reduceMotion { return 1 }
+        return pocketTravel(for: selection, in: containerSize).scale
+    }
+
+    private func panelPosition(for selection: CardSelection, in containerSize: CGSize) -> CGPoint {
+        if !isClosing || reduceMotion { return landingPoint(in: containerSize) }
+        return CGPoint(x: selection.sourceRect.midX, y: selection.sourceRect.midY)
+    }
+
+    private func panelTransition(for selection: CardSelection, in containerSize: CGSize) -> AnyTransition {
         if reduceMotion {
             return .opacity
         }
 
-        let startScale = max(0.05, selection.sourceRect.width / CardDetailPanel.width)
-        return .scale(scale: startScale)
-            .combined(with: .offset(
-                x: selection.sourceRect.midX - landing.x,
-                y: selection.sourceRect.midY - landing.y
-            ))
+        let travel = pocketTravel(for: selection, in: containerSize)
+        return .scale(scale: travel.scale)
+            .combined(with: .offset(x: travel.offset.width, y: travel.offset.height))
+    }
+
+    private func pocketTravel(for selection: CardSelection, in containerSize: CGSize) -> (scale: CGFloat, offset: CGSize) {
+        let landing = landingPoint(in: containerSize)
+        return (
+            scale: max(0.05, selection.sourceRect.width / CardDetailPanel.width),
+            offset: CGSize(
+                width: selection.sourceRect.midX - landing.x,
+                height: selection.sourceRect.midY - landing.y
+            )
+        )
     }
 
     /// Esc, scoped to the overlay's lifetime — a permanently installed escape
@@ -94,9 +131,46 @@ struct CardZoomOverlay: View {
             .opacity(0)
     }
 
-    private func dismiss() {
-        withAnimation(animation) {
-            selection = nil
+    private func sync(to newValue: CardSelection?) {
+        if suppressSelectionNil { return }
+
+        if let newValue {
+            closeGeneration += 1
+            presentedSelection = newValue
+            isClosing = false
+            return
         }
+
+        startClose()
+    }
+
+    private func dismiss() {
+        startClose()
+    }
+
+    private func startClose() {
+        guard let current = visibleSelection, !isClosing else { return }
+        presentedSelection = current
+        closeGeneration += 1
+        let generation = closeGeneration
+        withAnimation(animation, completionCriteria: .logicallyComplete) {
+            isClosing = true
+        } completion: {
+            finishClose(generation: generation)
+        }
+    }
+
+    private func finishClose(generation: Int) {
+        guard generation == closeGeneration, isClosing else { return }
+
+        suppressSelectionNil = true
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            presentedSelection = nil
+            selection = nil
+            isClosing = false
+        }
+        suppressSelectionNil = false
     }
 }

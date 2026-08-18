@@ -155,6 +155,9 @@ struct CardSlotView: View {
     // MARK: - Derived
 
     private var scale: CGFloat {
+        // `sourceRect` is the unscaled pocket frame. Keep the selected card at
+        // 1.0 so the returning panel lands on the same geometry it left.
+        if selection?.dexNumber == slot.dexNumber { return 1 }
         if emphasis == .spotlit { return 1.04 }
         if isHovering && slot.dexNumber != nil { return 1.02 }
         return 1

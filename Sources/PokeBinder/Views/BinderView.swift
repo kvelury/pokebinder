@@ -61,7 +61,11 @@ struct BinderView: View {
         }
         // Clicking the page background dismisses an open card popover.
         .contentShape(Rectangle())
-        .onTapGesture { selection = nil }
+        .onTapGesture {
+            withAnimation(reduceMotion ? AppMotion.quick : AppMotion.cardDetail) {
+                selection = nil
+            }
+        }
         .onAppear {
             fromPage = binder.currentPage
             toPage = binder.currentPage
