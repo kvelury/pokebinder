@@ -1,4 +1,5 @@
 import Foundation
+import PokeBinderSync
 import SwiftUI
 
 /// App-facing Notion integration: connection lifecycle plus this binder's
@@ -435,3 +436,5 @@ final class NotionManager: ObservableObject {
         return cells.map { $0.trimmingCharacters(in: .whitespaces) }
     }
 }
+
+extension NotionManager: OwnershipRemoteClient {}

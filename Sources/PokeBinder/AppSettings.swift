@@ -1,4 +1,5 @@
 import Foundation
+import PokeBinderSync
 
 /// UserDefaults keys for this app. NotionAuth/NotionManager read these rather
 /// than Dosa's, so a token from one app can never be mistaken for the other.
@@ -18,4 +19,8 @@ enum AppSettings {
     /// Already wired on `SettingsSheet` as `@AppStorage("notionDatabaseId")`.
     static let notionDatabaseIdKey = "notionDatabaseId"
     static let defaultDatabaseId = "187a66ca-0d0d-40da-b3aa-64f51adceb65"
+
+    static let notionSyncIntervalKey = "pokebinder.notionSyncInterval"
+    static let notionSyncCustomMinutesKey = "pokebinder.notionSyncCustomMinutes"
+    static let defaultNotionSyncCustomMinutes = NotionSyncInterval.defaultCustomMinutes
 }

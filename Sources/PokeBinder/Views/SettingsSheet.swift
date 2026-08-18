@@ -1,3 +1,4 @@
+import PokeBinderSync
 import SwiftUI
 
 /// Settings. Notion OAuth + MCP live here: Connect/Disconnect, live status, and
@@ -17,6 +18,12 @@ struct SettingsSheet: View {
     /// Defaulted to the database from the spec, but editable rather than hardcoded.
     @AppStorage(AppSettings.notionDatabaseIdKey)
     private var databaseId = AppSettings.defaultDatabaseId
+
+    @AppStorage(AppSettings.notionSyncIntervalKey)
+    private var syncInterval: NotionSyncInterval = .manual
+    @AppStorage(AppSettings.notionSyncCustomMinutesKey)
+    private var customSyncMinutes = AppSettings.defaultNotionSyncCustomMinutes
+    @State private var customMinutesText = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -78,6 +85,31 @@ struct SettingsSheet: View {
                         .font(theme.numberFont(size: 11))
                         .textFieldStyle(.roundedBorder)
 
+                    Picker("Refresh", selection: $syncInterval) {
+                        ForEach(NotionSyncInterval.allCases) { interval in
+                            Text(interval.shortTitle).tag(interval)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .help("How often to pull Notion and flush queued local edits while the app is open.")
+
+                    if syncInterval == .custom {
+                        TextField("Minutes", text: $customMinutesText)
+                            .font(theme.numberFont(size: 13))
+                            .textFieldStyle(.roundedBorder)
+                            .onChange(of: customMinutesText) { _, newValue in
+                                let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+                                if let value = Int(trimmed) {
+                                    customSyncMinutes = NotionSyncInterval.sanitizedCustomMinutes(value)
+                                }
+                            }
+                            .onSubmit { commitCustomMinutes() }
+                    }
+
+                    if let lastSynced = collection.lastSyncedAt {
+                        LabeledContent("Last synced", value: lastSynced.formatted(date: .omitted, time: .shortened))
+                    }
+
                     connectionButton
 
                     if let error = notion.errorMessage {
@@ -87,7 +119,7 @@ struct SettingsSheet: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
 
-                    Text("Connect your Notion account (opens the browser). Ownership is read from this database and the Owned toggle writes back to the matching row.")
+                    Text("Connect your Notion account (opens the browser). Edits you make are queued and written on the next sync. Automatic refresh runs only while PokéBinder is open; the resync button always pulls Notion and flushes the queue. A pending local edit wins if the same Pokémon also changed in Notion.")
                         .font(.caption)
                         .foregroundStyle(theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -110,12 +142,29 @@ struct SettingsSheet: View {
             }
             .padding(14)
         }
-        .frame(width: 520, height: 680)
+        .frame(width: 520, height: 760)
+        .onAppear { customMinutesText = String(customSyncMinutes) }
+        .onChange(of: customSyncMinutes) { _, newValue in
+            customMinutesText = String(newValue)
+        }
+        .onChange(of: syncInterval) { _, newValue in
+            if newValue == .custom {
+                commitCustomMinutes()
+            }
+        }
         .onChange(of: notion.connectionState) { _, state in
             if case .connected = state {
                 Task { await collection.use(NotionOwnershipBackend(manager: notion)) }
             }
         }
+    }
+
+    private func commitCustomMinutes() {
+        let trimmed = customMinutesText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let value = Int(trimmed) {
+            customSyncMinutes = NotionSyncInterval.sanitizedCustomMinutes(value)
+        }
+        customMinutesText = String(customSyncMinutes)
     }
 
     private func paletteChoice(_ palette: GlassPalette) -> some View {

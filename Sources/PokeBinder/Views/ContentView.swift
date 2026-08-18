@@ -1,3 +1,4 @@
+import PokeBinderSync
 import SwiftUI
 
 /// Toolbar sizing, in one place so the icon buttons and the search field stay the
@@ -13,13 +14,20 @@ private enum Chrome {
 struct ContentView: View {
     @Environment(\.appTheme) private var theme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
     @StateObject private var binder = BinderState()
     @StateObject private var collection = CollectionStore()
     @StateObject private var notion = NotionManager()
     @StateObject private var hoverTooltip = HoverTooltipModel()
     @State private var showSettings = false
     @State private var selection: CardSelection?
+    @State private var isAppActive = true
     @FocusState private var searchFocused: Bool
+
+    @AppStorage(AppSettings.notionSyncIntervalKey)
+    private var syncInterval: NotionSyncInterval = .manual
+    @AppStorage(AppSettings.notionSyncCustomMinutesKey)
+    private var customSyncMinutes = AppSettings.defaultNotionSyncCustomMinutes
 
     var body: some View {
         ZStack {
@@ -35,11 +43,9 @@ struct ContentView: View {
             }
             .padding(.top, theme.isLiquidGlass ? 54 : 0)
 
-            if binder.viewMode == .binder {
-                VStack {
-                    Spacer()
-                    bottomBar
-                }
+            VStack {
+                Spacer()
+                bottomBar
             }
 
             CardZoomOverlay(selection: $selection)
@@ -90,6 +96,41 @@ struct ContentView: View {
             }
             binder.prefetchNeighbours()
         }
+        .task(id: syncScheduleID) {
+            await runScheduledSyncLoop()
+        }
+        .onChange(of: scenePhase, initial: true) { _, phase in
+            isAppActive = phase == .active
+            if phase == .active, notion.isConnected {
+                Task {
+                    await collection.syncIfDue(
+                        interval: syncInterval,
+                        customMinutes: customSyncMinutes
+                    )
+                }
+            }
+        }
+    }
+
+    private var syncScheduleID: String {
+        "\(syncInterval.rawValue)-\(customSyncMinutes)-\(notion.isConnected)"
+    }
+
+    private func runScheduledSyncLoop() async {
+        guard notion.isConnected else { return }
+        guard let minutes = syncInterval.resolvedMinutes(customMinutes: customSyncMinutes) else {
+            return
+        }
+        while !Task.isCancelled {
+            do {
+                try await Task.sleep(for: .seconds(minutes * 60))
+            } catch {
+                return
+            }
+            guard !Task.isCancelled else { return }
+            guard isAppActive else { continue }
+            await collection.resync()
+        }
     }
 
     /// A hairline where the toolbar ends and the content begins.
@@ -116,6 +157,7 @@ struct ContentView: View {
         ZStack {
             PagerBar()
             HStack {
+                NotionResyncButton()
                 Spacer()
                 CollectedCountPill()
             }
