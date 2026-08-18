@@ -8,8 +8,8 @@ that got it here and the reasons they should not be quietly undone.
 - `handoff.md` is **not** tracked (it is in `.gitignore`). It is scratch: the work order for whoever
   is picking up the next chunk. Nothing durable should live only there.
 
-Last updated for: **Notion scheduled sync**. Parts 1–6, optional Liquid Glass themes, and
-queued two-way Notion refresh are shipped.
+Last updated for: **Grid mode**. Parts 1–6, optional Liquid Glass themes, queued two-way
+Notion refresh, and the continuous pinch-zoomable grid are shipped.
 
 ---
 
@@ -100,7 +100,8 @@ Each of these keys stored user data; renaming any of them silently discards it.
 
 - `CFBundleIdentifier` = `com.pokebinder.app` — the `UserDefaults` domain is keyed by it.
 - The `pokebinder.*` UserDefaults keys in `AppSettings` (appearance, type era, Notion tokens,
-  `pokebinder.notionSyncInterval`, `pokebinder.notionSyncCustomMinutes`), and
+  `pokebinder.notionSyncInterval`, `pokebinder.notionSyncCustomMinutes`,
+  `pokebinder.gridCardWidth`), and
   `localOwnedDexNumbers` in `CollectionStore`.
 - The Application Support paths, which stay ASCII `PokeBinder` despite the display name:
   `PokeBinder/artwork/` and `PokeBinder/ownership.json`.
@@ -158,6 +159,7 @@ Sources/PokeBinder/
 ├── ArtworkStore.swift      actor + disk cache + prefetch, and CardArtworkView
 ├── CollectionStore.swift   OwnershipBackend, LocalOwnershipBackend, CollectionStore
 ├── BinderState.swift       navigation + search (matching, auto-flip, cycling, emphasis)
+├── GridState.swift         live grid cardWidth, log zoom mapping, scroll anchor
 ├── Notion/
 │   ├── NotionAuth.swift             OAuth 2.1, dynamic client registration, PKCE, loopback server
 │   ├── NotionMCPClient.swift        Streamable-HTTP MCP: initialize → tools/call, SSE parsing
@@ -173,11 +175,12 @@ Sources/PokeBinder/
     ├── CardZoomOverlay.swift    scrim + the pocket→centre pop
     ├── PagerBar.swift           ◀ · click-to-edit N / 19 · ▶, NotionResyncButton, CollectedCountPill
     ├── PillChrome.swift         shared Classic/glass control and panel surfaces
-    ├── GridViewStub.swift       "Coming soon"
+    ├── GridView.swift           the continuous grid, page sheet, pinch catcher
+    ├── GridZoomMeter.swift      the floating zoom control that replaces the pager
     └── SettingsSheet.swift      Collection / Theme / Notion / About sections
 ```
 
-### Two contracts to preserve
+### Three contracts to preserve
 
 These are what let the app's parts be worked on independently, and they still hold.
 
@@ -193,6 +196,12 @@ These are what let the app's parts be worked on independently, and they still ho
    field, ⌘←/⌘→, trackpad swipe, and search auto-flip. It is a clamp-and-set;
    `BinderView` observes `currentPage` and drives the animation from it. That is what lets a turn in
    flight **retarget** rather than queue when auto-flip fires on every keystroke.
+
+3. **`CardSlotView` is the only thing that draws a card and `CardDetailPanel` /
+   `CardZoomOverlay` the only things that present one.** Grid mode supplies a different
+   `BinderMetrics` (`BinderMetrics(cardWidth:)` — never `fitting(_:)`) and the same `$selection`
+   binding, and nothing else. A future change to the card or the popup lands in grid mode for
+   free, with no grid-side edit.
 
 ### Caching, and why the app is never blank
 
@@ -344,8 +353,12 @@ does **not** go through SwiftUI hit testing, so a scrim above it would still let
 the page underneath the panel. While a card is up the catcher is suspended and **returns the event
 unconsumed** — swallowing it would deaden scrolling app-wide, including in the Settings sheet.
 
-**Grid view.** The Binder/Grid segment is live and switchable, and Grid lands on a "Coming soon"
-empty state.
+**Grid view.** A continuous 151-card grid on one page sheet (the binder's paper, hairline, and
+drop shadow, without the gutter gradient). Pinch-zoom reflows the column count by changing
+`cardWidth` (80–260pt, log-mapped) rather than applying a `.scaleEffect`, so each cell is
+literally the binder's `CardSlotView` at a different size. A bottom-centre glass meter replaces
+the pager; ⌘+/⌘−/⌘0 step and reset. Search spotlight and auto-scroll work as in the binder;
+⌘←/⌘→ step 8 cards via the existing `goTo`. Switching modes keeps you on the same cards.
 
 ## 7. Settings & theming
 
@@ -419,11 +432,14 @@ without asking.**
 | **Four Liquid Glass palettes** | Full Glass is untinted; Forest/Brass, Navy/Gold, and Burgundy/Dark Gold provide coordinated content and accent ramps. |
 | **App name `PokéBinder`**, with the accent | Matches the official Pokémon spelling. Bundle display strings only; there is still no window title. |
 | **macOS 26 only** | See §2 — a fallback for 14/15 could never be tested here. |
-| **Grid segment live, landing on "Coming soon"** | Better than a disabled control that gives no feedback. |
+| **Grid reflows on zoom rather than scaling** | A transform never becomes an overview and resamples text; relayout keeps the card identical to the binder's at every level. |
+| **One continuous page sheet behind the grid** | `theme.sleeve` was designed against paper; on the window background the pocket edge collapses in light mode. |
+| **The zoom meter replaces the pager in grid mode** | A continuous grid has no pages to turn, and two centre controls would crowd the bar. |
+| **Grid draws no empty 152nd pocket** | That pocket is a binder artifact, not a Pokédex one. |
 | **Notion is optional** | The binder is fully usable offline; Notion adds ownership sync, it isn't a prerequisite. |
 | **Queued Notion writes, local pending wins** | Toggles stay instant in the UI. Remote I/O waits for the next interval or the always-visible resync. A queued app edit beats a conflicting Notion value for that Pokédex number. |
 
 ## 9. Not in scope
 
-Multi-generation binders, duplicate tracking, condition/grading, sharing, the real Grid view, and an
+Multi-generation binders, duplicate tracking, condition/grading, sharing, and an
 app icon (a `Scripts/make_icon.swift` could follow Dosa's pattern later).

@@ -55,6 +55,34 @@ actor ArtworkStore {
             }
         }
     }
+
+    /// Warm the whole set for grid mode. Bounded concurrency on purpose — spawning 151
+    /// URLSession tasks at once on a cold cache saturates the connection pool and makes
+    /// every one of them slower.
+    func prefetchAll(concurrency: Int = 6) async {
+        await withTaskGroup(of: Void.self) { group in
+            var next = 1
+            var inFlightCount = 0
+
+            func spawn() {
+                while inFlightCount < concurrency, next <= Pokedex.count {
+                    let dex = next
+                    next += 1
+                    if inFlight[dex] != nil { continue }
+                    inFlightCount += 1
+                    group.addTask {
+                        _ = await self.data(for: dex)
+                    }
+                }
+            }
+
+            spawn()
+            for await _ in group {
+                inFlightCount -= 1
+                spawn()
+            }
+        }
+    }
 }
 
 /// Decoded images, kept on the main actor so views can hit them synchronously and
