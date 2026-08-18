@@ -132,12 +132,16 @@ extension View {
 
 struct HoverTooltipHost: View {
     @ObservedObject var model: HoverTooltipModel
+    let floatingChrome: Bool
     @Environment(\.appTheme) private var theme
     @State private var tooltipSize: CGSize = .zero
 
     var body: some View {
         GeometryReader { proxy in
-            let safe = CardZoomOverlay.safePanelRect(in: proxy.size, liquidGlass: theme.isLiquidGlass)
+            let safe = CardZoomOverlay.safePanelRect(
+                in: proxy.size,
+                floatingChrome: floatingChrome
+            )
             let metrics = CardDetailMetrics.fitting(safe: safe.size)
             if let presentation = model.presentation {
                 tooltip(for: presentation.content, metrics: metrics)

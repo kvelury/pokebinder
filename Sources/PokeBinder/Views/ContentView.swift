@@ -71,7 +71,7 @@ struct ContentView: View {
                 .zIndex(50)
             }
 
-            HoverTooltipHost(model: hoverTooltip)
+            HoverTooltipHost(model: hoverTooltip, floatingChrome: floatingChrome)
                 .zIndex(100)
         }
         .coordinateSpace(.named(BinderSpace.content))
