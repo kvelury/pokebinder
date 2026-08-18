@@ -325,6 +325,23 @@ struct CardDetailMetrics {
     var chipLabelGap: CGFloat { 2 * scale }
     var chipSpacing: CGFloat { 8 * scale }            // was 6; widened for the bigger chips
 
+    // Hover card
+    //
+    // `hoverWidth` is the panel's *details column* width, not a new number:
+    // 600 - 200 (art) - 14 (columnSpacing) - 32 (padding) = 354, plus this card's
+    // own 2 x 14 padding. Matching it is what makes the matchup rows wrap here
+    // exactly the way they wrap in the panel.
+    var hoverWidth: CGFloat { 390 * scale }
+    var hoverPadding: CGFloat { 14 * scale }
+    var hoverSectionSpacing: CGFloat { 10 * scale }
+    var hoverTypeRowSpacing: CGFloat { 6 * scale }
+    var hoverTypeIconSize: CGFloat { 34 * scale }
+    var hoverTypeLabelSize: CGFloat { 15 * scale }
+    var hoverTitleFontSize: CGFloat { 15 * scale }
+    var hoverNumberFontSize: CGFloat { 12 * scale }
+
+    func hoverCornerRadius(liquidGlass: Bool) -> CGFloat { (liquidGlass ? 18 : 12) * scale }
+
     /// Solve the scale that keeps the panel's footprint constant relative to the window.
     /// `min` across both axes so a short window shrinks the panel rather than pushing it
     /// into the scroll fallback.

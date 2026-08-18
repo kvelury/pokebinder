@@ -117,6 +117,31 @@ func calculatorTests() -> [TestCase] {
             )
             try expectEqual(summary.rows(for: .full).map(\.kind), [.weakTo])
         },
+        TestCase(name: "hoverLevelSimpleShowsTypesOnly") {
+            try expect(MatchupDetailLevel.simple.hoverRowLevel == nil)
+        },
+        TestCase(name: "hoverLevelAdvancedShowsStrengthsAndWeaknessesOnly") {
+            let summary = TypeMatchupCalculator.summary(
+                pokemonTypes: [.fire, .flying],
+                relationsByType: currentFireFlying,
+                era: .current
+            )
+            try expectEqual(
+                summary.rows(for: .advanced.hoverRowLevel!).map(\.kind),
+                [.strongAgainst, .weakTo]
+            )
+        },
+        TestCase(name: "hoverLevelFullShowsEveryRow") {
+            let summary = TypeMatchupCalculator.summary(
+                pokemonTypes: [.fire, .flying],
+                relationsByType: currentFireFlying,
+                era: .current
+            )
+            try expectEqual(
+                summary.rows(for: .full.hoverRowLevel!).map(\.kind),
+                summary.rows(for: .full).map(\.kind)
+            )
+        },
     ]
 }
 

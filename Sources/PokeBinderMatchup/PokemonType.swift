@@ -53,6 +53,17 @@ package enum MatchupDetailLevel: String, CaseIterable, Identifiable {
         case .full: "Full"
         }
     }
+
+    /// What the hover card shows. Hover is a glance, the panel is the study, so each
+    /// level shows one step less than it does in the panel: Simple is types only.
+    /// `nil` means "types only — no matchup rows".
+    package var hoverRowLevel: MatchupDetailLevel? {
+        switch self {
+        case .simple:   nil
+        case .advanced: .simple      // Strong against + Weak to
+        case .full:     .full        // every row
+        }
+    }
 }
 
 package enum PokemonType: String, CaseIterable, Identifiable {

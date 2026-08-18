@@ -97,6 +97,12 @@ struct ContentView: View {
                 binder.goTo(page: Pokedex.page(for: grid.anchorDex))
             }
         }
+        .onChange(of: selection) { _, new in
+            hoverTooltip.setSuppressed(
+                new != nil,
+                animation: AppMotion.respectingReduceMotion(AppMotion.quick, reduceMotion: reduceMotion)
+            )
+        }
         .task {
             if notion.isConnected {
                 await collection.use(NotionOwnershipBackend(manager: notion))

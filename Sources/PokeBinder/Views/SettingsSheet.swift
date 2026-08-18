@@ -81,7 +81,7 @@ struct SettingsSheet: View {
                     }
                     .pickerStyle(.segmented)
 
-                    Text("Simple shows strengths and weaknesses. Advanced adds resistances and immunities. Full includes offensive coverage gaps.")
+                    Text("Simple shows strengths and weaknesses. Advanced adds resistances and immunities. Full includes offensive coverage gaps. Hovering a card shows one level less — types only at Simple.")
                         .font(.caption)
                         .foregroundStyle(theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)

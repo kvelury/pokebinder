@@ -28,6 +28,7 @@ struct CardSlotView: View {
             sleeve
             if let dex = slot.dexNumber {
                 cardContent(dex: dex)
+                    .hoverCard(dexNumber: dex)
             }
         }
         .frame(width: metrics.cardWidth, height: metrics.cardHeight)
@@ -96,7 +97,8 @@ struct CardSlotView: View {
                     types: Pokedex.types(for: dex, era: typeEra),
                     size: max(10, metrics.cardWidth * 0.14),
                     spacing: metrics.cardWidth * 0.018,
-                    isMuted: !isOwned
+                    isMuted: !isOwned,
+                    showsTooltip: false
                 )
                 .padding(metrics.cardWidth * 0.05)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
