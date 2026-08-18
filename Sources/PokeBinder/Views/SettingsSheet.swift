@@ -76,12 +76,12 @@ struct SettingsSheet: View {
                         .foregroundStyle(theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
 
-                    Picker("Matchups", selection: $matchupDetailLevel) {
+                    Picker("Hover matchups", selection: $matchupDetailLevel) {
                         ForEach(MatchupDetailLevel.allCases) { Text($0.title).tag($0) }
                     }
                     .pickerStyle(.segmented)
 
-                    Text("Simple shows strengths and weaknesses. Advanced adds resistances and immunities. Full includes offensive coverage gaps.")
+                    Text("Controls the matchup rows shown when hovering a card. Simple shows strengths and weaknesses. Advanced adds resistances and immunities. Full includes offensive coverage gaps. The focused card always shows Full details.")
                         .font(.caption)
                         .foregroundStyle(theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)

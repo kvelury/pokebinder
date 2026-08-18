@@ -9,6 +9,10 @@ struct TypeMatchupTable: View {
     let dexNumber: Int
     let metrics: CardDetailMetrics
     var isMuted = false
+    /// When set, overrides the stored hover setting (the focused card always uses Full).
+    var levelOverride: MatchupDetailLevel? = nil
+    /// The hover host is not hit-testable, so a Retry button there would be dead UI.
+    var showsRetry = true
 
     @Environment(\.appTheme) private var theme
     @AppStorage(AppSettings.typeEraKey) private var typeEra: TypeEra = .current
@@ -30,14 +34,16 @@ struct TypeMatchupTable: View {
                         .font(.caption)
                         .foregroundStyle(theme.textSecondary)
                         .multilineTextAlignment(.center)
-                    Button("Retry") { Task { await load() } }
-                        .font(.caption)
-                        .buttonStyle(.plain)
-                        .foregroundStyle(theme.brass)
+                    if showsRetry {
+                        Button("Retry") { Task { await load() } }
+                            .font(.caption)
+                            .buttonStyle(.plain)
+                            .foregroundStyle(theme.brass)
+                    }
                 }
                 .frame(maxWidth: .infinity)
             case .ready(let summary):
-                let rows = summary.rows(for: detailLevel)
+                let rows = summary.rows(for: levelOverride ?? detailLevel)
                 if rows.isEmpty {
                     Text("No matchups to show.")
                         .font(.caption)

@@ -35,9 +35,10 @@ struct TypeIconView: View {
     let size: CGFloat
     var isMuted = false
     var tooltip: String? = nil
+    var showsTooltip = true
 
     var body: some View {
-        ZStack {
+        let icon = ZStack {
             Circle().fill(type.color)
 
             if let image = TypeIconAssets.image(for: type) {
@@ -58,7 +59,12 @@ struct TypeIconView: View {
         .saturation(isMuted ? 0.2 : 1)
         .opacity(isMuted ? 0.72 : 1)
         .accessibilityLabel(type.title)
-        .hoverTooltip(tooltip ?? type.title)
+
+        if showsTooltip {
+            icon.hoverTooltip(tooltip ?? type.title)
+        } else {
+            icon
+        }
     }
 }
 
@@ -67,11 +73,12 @@ struct TypeIconGroup: View {
     let size: CGFloat
     var spacing: CGFloat = 4
     var isMuted = false
+    var showsTooltip = true
 
     var body: some View {
         HStack(spacing: spacing) {
             ForEach(types) { type in
-                TypeIconView(type: type, size: size, isMuted: isMuted)
+                TypeIconView(type: type, size: size, isMuted: isMuted, showsTooltip: showsTooltip)
             }
         }
     }

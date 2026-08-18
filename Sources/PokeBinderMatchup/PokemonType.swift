@@ -38,7 +38,7 @@ package enum TypeEra: String, CaseIterable, Identifiable {
     }
 }
 
-/// How much of the matchup table the detail panel shows.
+/// How much of the matchup table the hover card shows.
 package enum MatchupDetailLevel: String, CaseIterable, Identifiable {
     case simple
     case advanced

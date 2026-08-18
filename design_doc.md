@@ -8,8 +8,8 @@ that got it here and the reasons they should not be quietly undone.
 - `handoff.md` is **not** tracked (it is in `.gitignore`). It is scratch: the work order for whoever
   is picking up the next chunk. Nothing durable should live only there.
 
-Last updated for: **Grid mode**. Parts 1–6, optional Liquid Glass themes, queued two-way
-Notion refresh, and the continuous pinch-zoomable grid are shipped.
+Last updated for: **Card hover**. Parts 1–6, optional Liquid Glass themes, queued two-way
+Notion refresh, the continuous pinch-zoomable grid, and the beside-card type hover card are shipped.
 
 ---
 
@@ -337,9 +337,14 @@ while browsing.
 
 **Types.** The detail panel presents `#035 | [type icons]` beneath the Pokémon name. Binder and detail
 icons share one component and use the SVG glyphs and colors from
-`duiker101/pokemon-type-svg-icons`. Hovering an individual icon presents its readable type name
-through the root-level hover-tooltip host, which keeps tooltips above binder clipping and is designed
-to accept richer hover content later.
+`duiker101/pokemon-type-svg-icons`. Hovering a card (binder or grid) for ~250ms presents a hover card
+beside it with that Pokémon's type info at Settings → Types → Hover matchups: Simple shows Strong
+against and Weak to, Advanced adds resistances and immunities, and Full adds offensive coverage gaps.
+The hover card is placed beside the pocket — the side with more room, falling back to above/below if
+neither side fits — and scales on the same `CardDetailMetrics` solve as the click-open panel, in a
+narrower frame matching the panel's details column. Per-icon type-name tooltips are suppressed on
+cards because the hover card already names every type; they remain on the detail panel identity row
+and on matchup chips. The hover card is suppressed entirely while the detail panel is open.
 
 **Card detail.** Clicking a pocket quickly springs the detail panel from that pocket to the centre
 of the window; dismissal reverses the same short transition. A scrim dims the whole content area —
@@ -347,7 +352,9 @@ pager bar and count pill included; the top functional controls stay bright. Dism
 Esc, or the ✕ on the panel. Clicking the panel itself does not dismiss (it would fight the Owned
 switch). The insertion transition is part of the click's state-change transaction, so it begins
 without waiting for an `onAppear` callback. Reduce Motion replaces the travel and scale with the
-quick fade.
+quick fade. Pointing at a card without clicking is the hover card above — no scrim, not dismissible,
+and never hit-tested so a click still opens this panel. The focused card always shows Full matchup
+details, independent of the hover setting.
 
 The overlay is hosted in `ContentView` so it can sit above the pager. That is not enough on its own
 for the trackpad. `TrackpadPageTurnCatcher` installs a local `NSEvent` scroll-wheel monitor that
@@ -381,7 +388,8 @@ Preference keys follow `AppSettings`: `static let <name>Key = "pokebinder.<name>
 - **Collection** — the active backend name and the collected count.
 - **Theme** — Classic/Liquid Glass style, the four glass palettes, and appearance (below).
 - **Types** — Current or original Gen I assignments. Current is the default; Gen I removes later
-  Steel/Fairy changes from the seven affected Pokémon.
+  Steel/Fairy changes from the seven affected Pokémon. Hover matchups (Simple / Advanced / Full)
+  controls only the hover card's rows; the click-open focused card always shows Full details.
 - **Notion** — Connect/Disconnect, live status, workspace name, the database id field, and the
   refresh interval (`Manual`, `1`, `3`, `5`, `8`, or a custom whole-minute value). Automatic
   refresh runs only while the app is open and active; changing the interval restarts the timer.

@@ -71,7 +71,7 @@ struct ContentView: View {
                 .zIndex(50)
             }
 
-            HoverTooltipHost(model: hoverTooltip)
+            HoverTooltipHost(model: hoverTooltip, floatingChrome: floatingChrome)
                 .zIndex(100)
         }
         .coordinateSpace(.named(BinderSpace.content))
@@ -105,6 +105,12 @@ struct ContentView: View {
             if old == .grid, new == .binder {
                 binder.goTo(page: Pokedex.page(for: grid.anchorDex))
             }
+        }
+        .onChange(of: selection) { _, new in
+            hoverTooltip.setSuppressed(
+                new != nil,
+                animation: AppMotion.respectingReduceMotion(AppMotion.quick, reduceMotion: reduceMotion)
+            )
         }
         .task {
             if notion.isConnected {
