@@ -14,6 +14,7 @@ struct SettingsSheet: View {
     @AppStorage(AppSettings.appStyleKey) private var appStyle: AppStyle = .classic
     @AppStorage(AppSettings.glassPaletteKey) private var glassPalette: GlassPalette = .fullGlass
     @AppStorage(AppSettings.typeEraKey) private var typeEra: TypeEra = .current
+    @AppStorage(AppSettings.matchupDetailLevelKey) private var matchupDetailLevel: MatchupDetailLevel = .simple
 
     /// Defaulted to the database from the spec, but editable rather than hardcoded.
     @AppStorage(AppSettings.notionDatabaseIdKey)
@@ -74,6 +75,16 @@ struct SettingsSheet: View {
                         .font(.caption)
                         .foregroundStyle(theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
+
+                    Picker("Matchups", selection: $matchupDetailLevel) {
+                        ForEach(MatchupDetailLevel.allCases) { Text($0.title).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+
+                    Text("Simple shows strengths and weaknesses. Advanced adds resistances and immunities. Full includes offensive coverage gaps.")
+                        .font(.caption)
+                        .foregroundStyle(theme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
                 Section("Notion") {
@@ -128,6 +139,7 @@ struct SettingsSheet: View {
                 Section("About") {
                     LabeledContent("Binder", value: "\(Pokedex.pageCount) pages · \(Pokedex.count) Pokémon")
                     LabeledContent("Artwork", value: "PokeAPI official artwork")
+                    LabeledContent("Type matchups", value: "PokeAPI type charts")
                     LabeledContent("Type icons", value: "duiker101")
                 }
             }

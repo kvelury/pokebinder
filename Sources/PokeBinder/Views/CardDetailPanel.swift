@@ -4,15 +4,20 @@ import SwiftUI
 /// stray click can never edit the collection — marking a card owned is deliberate,
 /// via the switch at the bottom.
 ///
+/// Identity sits on the left; matchups and the Owned toggle sit on the right so
+/// the panel stays short enough to clear the floating search controls.
+///
 /// The `Owned` toggle writes through `CollectionStore`, which is optimistic and
 /// reverts on failure. Persist errors surface under the toggle.
 struct CardDetailPanel: View {
-    /// Wider than a pocket at every window size the binder supports, so the
-    /// overlay reads as a focus view rather than a blown-up popover.
-    static let width: CGFloat = 420
-    static let artSize: CGFloat = 360
+    /// Wide enough for art plus a two-row matchup grid, still inside the
+    /// app's 1000-point minimum window after overlay margins.
+    static let width: CGFloat = 900
+    static let artSize: CGFloat = 280
 
     let dexNumber: Int
+    var maxWidth: CGFloat = width
+    var maxHeight: CGFloat = .infinity
     let onClose: () -> Void
 
     @EnvironmentObject private var collection: CollectionStore
@@ -21,7 +26,44 @@ struct CardDetailPanel: View {
     @AppStorage(AppSettings.typeEraKey) private var typeEra: TypeEra = .current
 
     var body: some View {
-        VStack(spacing: 16) {
+        ViewThatFits(in: .vertical) {
+            panelBody
+            ScrollView {
+                panelBody
+            }
+            .scrollBounceBehavior(.basedOnSize)
+        }
+        .frame(width: min(Self.width, maxWidth))
+        .frame(maxHeight: maxHeight)
+        .panelChrome(in: RoundedRectangle(
+            cornerRadius: theme.isLiquidGlass ? 24 : 16,
+            style: .continuous
+        ))
+        .overlay(alignment: .topLeading) {
+            pageIndicator
+                .padding(10)
+        }
+        .overlay(alignment: .topTrailing) {
+            closeButton
+                .padding(10)
+        }
+    }
+
+    private var panelBody: some View {
+        HStack(alignment: .top, spacing: 20) {
+            identityColumn
+                .frame(width: Self.artSize)
+
+            Divider()
+
+            detailsColumn
+        }
+        .padding(24)
+        .frame(width: min(Self.width, maxWidth))
+    }
+
+    private var identityColumn: some View {
+        VStack(spacing: 14) {
             CardArtworkView(dexNumber: dexNumber)
                 .frame(width: Self.artSize, height: Self.artSize)
                 .saturation(isOwned ? 1 : 0)
@@ -48,35 +90,30 @@ struct CardDetailPanel: View {
                     )
                 }
             }
+        }
+        .frame(maxWidth: .infinity)
+    }
 
-            Divider()
+    private var detailsColumn: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            TypeMatchupTable(dexNumber: dexNumber, isMuted: !isOwned)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
-            Toggle("Owned", isOn: ownedBinding)
-                .toggleStyle(.switch)
-                .tint(theme.brass)
-                .font(theme.nameFont(size: 15))
+            VStack(alignment: .leading, spacing: 8) {
+                Toggle("Owned", isOn: ownedBinding)
+                    .toggleStyle(.switch)
+                    .tint(theme.brass)
+                    .font(theme.nameFont(size: 15))
 
-            if let message = collection.errorMessage {
-                Text(message)
-                    .font(.caption)
-                    .foregroundStyle(.red)
-                    .fixedSize(horizontal: false, vertical: true)
+                if let message = collection.errorMessage {
+                    Text(message)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
-        .padding(24)
-        .frame(width: Self.width)
-        .panelChrome(in: RoundedRectangle(
-            cornerRadius: theme.isLiquidGlass ? 24 : 16,
-            style: .continuous
-        ))
-        .overlay(alignment: .topLeading) {
-            pageIndicator
-                .padding(10)
-        }
-        .overlay(alignment: .topTrailing) {
-            closeButton
-                .padding(10)
-        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private var pageDetailsLabel: String {
