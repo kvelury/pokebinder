@@ -23,13 +23,21 @@ struct CardZoomOverlay: View {
                 }
 
                 if let selection {
-                    CardDetailPanel(
-                        dexNumber: selection.dexNumber,
-                        maxWidth: safe.width,
-                        maxHeight: safe.height,
-                        onClose: dismiss
-                    )
-                    .position(x: safe.midX, y: safe.midY)
+                    VStack(spacing: 0) {
+                        Color.clear.frame(height: safe.minY)
+                        HStack(spacing: 0) {
+                            Spacer(minLength: 0)
+                            CardDetailPanel(
+                                dexNumber: selection.dexNumber,
+                                maxWidth: safe.width,
+                                maxHeight: safe.height,
+                                onClose: dismiss
+                            )
+                            Spacer(minLength: 0)
+                        }
+                        .frame(width: geo.size.width, height: safe.height)
+                        Spacer(minLength: 0)
+                    }
                     .transition(panelTransition(for: selection, landing: CGPoint(x: safe.midX, y: safe.midY)))
                 }
             }

@@ -43,13 +43,14 @@ struct TypeMatchupTable: View {
                         .foregroundStyle(theme.textSecondary)
                         .frame(maxWidth: .infinity)
                 } else {
-                    let columns = Array(
-                        repeating: GridItem(.flexible(minimum: 72), spacing: 10, alignment: .topLeading),
-                        count: columnCount(for: rows.count)
-                    )
-                    LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
-                        ForEach(rows) { row in
-                            matchupRow(row)
+                    let columns = columnCount(for: rows.count)
+                    VStack(alignment: .leading, spacing: 10) {
+                        ForEach(Array(stride(from: 0, to: rows.count, by: columns)), id: \.self) { start in
+                            HStack(alignment: .top, spacing: 10) {
+                                ForEach(Array(rows[start..<min(start + columns, rows.count)])) { row in
+                                    matchupRow(row)
+                                }
+                            }
                         }
                     }
                 }

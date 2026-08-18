@@ -27,26 +27,31 @@ struct CardDetailPanel: View {
 
     var body: some View {
         ViewThatFits(in: .vertical) {
-            panelBody
+            chromedBody
             ScrollView {
-                panelBody
+                chromedBody
             }
             .scrollBounceBehavior(.basedOnSize)
+            .frame(maxHeight: maxHeight)
         }
         .frame(width: min(Self.width, maxWidth))
-        .frame(maxHeight: maxHeight)
-        .panelChrome(in: RoundedRectangle(
-            cornerRadius: theme.isLiquidGlass ? 24 : 16,
-            style: .continuous
-        ))
-        .overlay(alignment: .topLeading) {
-            pageIndicator
-                .padding(10)
-        }
-        .overlay(alignment: .topTrailing) {
-            closeButton
-                .padding(10)
-        }
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var chromedBody: some View {
+        panelBody
+            .panelChrome(in: RoundedRectangle(
+                cornerRadius: theme.isLiquidGlass ? 24 : 16,
+                style: .continuous
+            ))
+            .overlay(alignment: .topLeading) {
+                pageIndicator
+                    .padding(10)
+            }
+            .overlay(alignment: .topTrailing) {
+                closeButton
+                    .padding(10)
+            }
     }
 
     private var panelBody: some View {
