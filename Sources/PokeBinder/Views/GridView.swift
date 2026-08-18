@@ -11,7 +11,8 @@ struct GridView: View {
 
     @Binding var selection: CardSelection?
 
-    private let outerInset: CGFloat = 28
+    private let outerInset:  CGFloat = 28   // horizontal margin; also feeds the column math
+    private let topInset:    CGFloat = 86   // 58pt floating cluster + 28pt gap
     private let bottomInset: CGFloat = 88
 
     var body: some View {
@@ -48,12 +49,12 @@ struct GridView: View {
                     .background(pageSheet(metrics: m))
                     .frame(width: sheetW)
                     .frame(maxWidth: .infinity)
-                    .padding(.top, outerInset)
                     .padding(.bottom, bottomInset)
                 }
+                .contentMargins(.top, topInset, for: .scrollContent)
                 .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { _, y in
                     let rowHeight = m.cardHeight + gap
-                    let centreRow = (y + viewportHeight / 2 - pad - outerInset) / rowHeight
+                    let centreRow = (y + viewportHeight / 2 - pad - topInset) / rowHeight
                     let index = Int(centreRow.rounded()) * columns + columns / 2
                     grid.noteAnchor(dex: min(max(index + 1, 1), Pokedex.count))
                 }

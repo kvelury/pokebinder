@@ -274,11 +274,13 @@ actionable controls, and `GlassEffectContainer` for adjacent shapes. Reduce Tran
 to the opaque semantic fill and border. Large transient panels use the same policy through
 `panelChrome`.
 
+Chrome is **floating or a bar**, not Classic vs Liquid Glass. Liquid Glass always floats; grid
+mode floats in either style, because a continuous grid should not be capped by a bar. Binder +
 Classic keeps the opaque unified toolbar and its anti-double-container rules (`.buttonStyle(.plain)`
-and `.sharedBackgroundVisibility(.hidden)`). Liquid Glass removes the visible top bar, extends
+and `.sharedBackgroundVisibility(.hidden)`). Floating chrome removes the visible top bar, extends
 content into the titlebar, and presents Binder/Grid, search, and Settings as three floating clusters.
-The standard traffic lights remain. The window background is draggable when the toolbar background
-is absent.
+The standard traffic lights remain and sit over the content. The window background is draggable when
+the toolbar background is absent.
 
 Glass is a **functional layer only**: navigation, controls, hover tooltips, sheets, and the card
 detail overlay. Binder pages, sleeves, cards, and artwork stay in the content layer. Avoid glass on
@@ -359,6 +361,9 @@ drop shadow, without the gutter gradient). Pinch-zoom reflows the column count b
 literally the binder's `CardSlotView` at a different size. A bottom-centre glass meter replaces
 the pager; ⌘+/⌘−/⌘0 step and reset. Search spotlight and auto-scroll work as in the binder;
 ⌘←/⌘→ step 8 cards via the existing `goTo`. Switching modes keeps you on the same cards.
+Grid mode always uses floating chrome: no toolbar, content to the top of the window, the three
+control clusters pinned over the cards. An 86pt top inset (58pt floating cluster + 28pt gap)
+keeps the first row clear at rest; cards pass underneath the pills once you scroll.
 
 ## 7. Settings & theming
 
@@ -435,6 +440,7 @@ without asking.**
 | **Grid reflows on zoom rather than scaling** | A transform never becomes an overview and resamples text; relayout keeps the card identical to the binder's at every level. |
 | **One continuous page sheet behind the grid** | `theme.sleeve` was designed against paper; on the window background the pocket edge collapses in light mode. |
 | **The zoom meter replaces the pager in grid mode** | A continuous grid has no pages to turn, and two centre controls would crowd the bar. |
+| **Grid mode hides the toolbar and floats the controls** | A continuous grid should not be capped by a permanent slab. The 86pt top inset keeps the first row clear at rest — the only moment the pills are fully exposed — and cards pass under them once you scroll. |
 | **Grid draws no empty 152nd pocket** | That pocket is a binder artifact, not a Pokédex one. |
 | **Notion is optional** | The binder is fully usable offline; Notion adds ownership sync, it isn't a prerequisite. |
 | **Queued Notion writes, local pending wins** | Toggles stay instant in the UI. Remote I/O waits for the next interval or the always-visible resync. A queued app edit beats a conflicting Notion value for that Pokédex number. |

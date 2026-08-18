@@ -34,6 +34,11 @@ struct ContentView: View {
     @AppStorage(AppSettings.notionSyncCustomMinutesKey)
     private var customSyncMinutes = AppSettings.defaultNotionSyncCustomMinutes
 
+    /// Floating chrome — no window toolbar, content runs under a transparent titlebar,
+    /// and the three clusters draw as pills over the content. Liquid Glass always;
+    /// grid mode in either style, because a continuous grid should not be capped by a bar.
+    private var floatingChrome: Bool { theme.isLiquidGlass || binder.viewMode == .grid }
+
     var body: some View {
         ZStack {
             theme.windowBackground.ignoresSafeArea()
@@ -46,21 +51,21 @@ struct ContentView: View {
                     GridView(selection: $selection)
                 }
             }
-            .padding(.top, theme.isLiquidGlass ? 54 : 0)
+            .padding(.top, theme.isLiquidGlass && binder.viewMode == .binder ? 54 : 0)
 
             VStack {
                 Spacer()
                 bottomBar
             }
 
-            CardZoomOverlay(selection: $selection)
+            CardZoomOverlay(selection: $selection, floatingChrome: floatingChrome)
 
             toolbarDivider
             keyboardShortcuts
 
-            if theme.isLiquidGlass {
+            if floatingChrome {
                 VStack(spacing: 0) {
-                    glassTopControls
+                    floatingTopControls
                     Spacer()
                 }
                 .zIndex(50)
@@ -70,7 +75,7 @@ struct ContentView: View {
                 .zIndex(100)
         }
         .coordinateSpace(.named(BinderSpace.content))
-        .background(WindowConfigurator(style: theme.style))
+        .background(WindowConfigurator(style: theme.style, floating: floatingChrome))
         .environmentObject(binder)
         .environmentObject(collection)
         .environmentObject(notion)
@@ -85,7 +90,7 @@ struct ContentView: View {
         // A flat, opaque bar. Without this the titlebar stays translucent and the
         // desktop behind the window shows through along the top edge.
         .toolbarBackground(theme.chrome, for: .windowToolbar)
-        .toolbarBackgroundVisibility(theme.isLiquidGlass ? .hidden : .visible, for: .windowToolbar)
+        .toolbarBackgroundVisibility(floatingChrome ? .hidden : .visible, for: .windowToolbar)
         .sheet(isPresented: $showSettings) {
             SettingsSheet()
                 .environmentObject(collection)
@@ -149,7 +154,7 @@ struct ContentView: View {
     /// the content area, so it lands exactly on the titlebar boundary.
     private var toolbarDivider: some View {
         VStack(spacing: 0) {
-            if !theme.isLiquidGlass {
+            if !floatingChrome {
                 Rectangle()
                     .fill(theme.chromeDivider)
                     .frame(height: 1)
@@ -180,10 +185,11 @@ struct ContentView: View {
         .padding(.bottom, 20)
     }
 
-    /// Liquid Glass is a floating functional layer rather than a continuous bar.
+    /// Floating chrome is a functional layer rather than a continuous bar.
     /// The leading inset clears the standard traffic-light controls while search
-    /// remains mathematically centred in the window.
-    private var glassTopControls: some View {
+    /// remains mathematically centred in the window. Used for Liquid Glass in
+    /// either mode, and for Classic once the view is the grid.
+    private var floatingTopControls: some View {
         GlassEffectContainer(spacing: 12) {
             ZStack {
                 searchField
@@ -231,7 +237,7 @@ struct ContentView: View {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        if !theme.isLiquidGlass {
+        if !floatingChrome {
             ToolbarItem(placement: .navigation) {
                 HStack(spacing: 4) {
                     viewModeButton(.binder, icon: "book.closed")
@@ -283,7 +289,7 @@ struct ContentView: View {
     @ViewBuilder
     private func viewModeButton(_ mode: ViewMode, icon: String) -> some View {
         let isActive = binder.viewMode == mode
-        if theme.isLiquidGlass {
+        if floatingChrome {
             Button {
                 binder.viewMode = mode
             } label: {
@@ -291,7 +297,7 @@ struct ContentView: View {
                     .contentShape(Capsule())
             }
             .buttonStyle(.plain)
-            .pillChrome(in: Capsule(), active: isActive, interactive: true)
+            .floatingPill(in: Capsule(), active: isActive, interactive: theme.isLiquidGlass)
             .help(mode.title)
             .animation(controlMotion, value: isActive)
         } else {
@@ -326,8 +332,9 @@ struct ContentView: View {
     /// One wide pill holding icon, field, match counter and clear button. Search gets
     /// the whole middle of the bar rather than a 190pt slot, because it is the only
     /// control here anyone reaches for repeatedly.
+    @ViewBuilder
     private var searchField: some View {
-        HStack(spacing: 7) {
+        let field = HStack(spacing: 7) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(theme.textSecondary)
@@ -357,7 +364,12 @@ struct ContentView: View {
         }
         .padding(.horizontal, 12)
         .frame(width: 380, height: Chrome.toolbarControlHeight)
-        .pillChrome(in: Capsule(), stroked: false, interactive: theme.isLiquidGlass)
+
+        if floatingChrome {
+            field.floatingPill(in: Capsule(), interactive: theme.isLiquidGlass)
+        } else {
+            field.pillChrome(in: Capsule(), stroked: false, interactive: theme.isLiquidGlass)
+        }
     }
 
     /// Zero-sized buttons purely to carry key equivalents. `.hidden()` would take

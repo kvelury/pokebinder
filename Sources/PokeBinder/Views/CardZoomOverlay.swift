@@ -9,6 +9,7 @@ import SwiftUI
 /// spring has logically completed, which avoids the last-frame landing snap.
 struct CardZoomOverlay: View {
     @Binding var selection: CardSelection?
+    let floatingChrome: Bool
 
     @Environment(\.appTheme) private var theme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -31,7 +32,7 @@ struct CardZoomOverlay: View {
 
     var body: some View {
         GeometryReader { geo in
-            let safe = Self.safePanelRect(in: geo.size, liquidGlass: theme.isLiquidGlass)
+            let safe = Self.safePanelRect(in: geo.size, floatingChrome: floatingChrome)
             let metrics = CardDetailMetrics.fitting(safe: safe.size)
             ZStack {
                 if visibleSelection != nil {
@@ -67,11 +68,11 @@ struct CardZoomOverlay: View {
         }
     }
 
-    /// Liquid Glass search controls sit in this overlay's coordinate space
-    /// (48pt bar + 10pt top inset). Classic uses the window toolbar, so only
-    /// a regular margin is reserved there.
-    static func safePanelRect(in size: CGSize, liquidGlass: Bool) -> CGRect {
-        let topReserved: CGFloat = liquidGlass ? 10 + 48 + 16 : 16
+    /// Floating search controls sit in this overlay's coordinate space
+    /// (48pt bar + 10pt top inset). Classic binder uses the window toolbar, so
+    /// only a regular margin is reserved there.
+    static func safePanelRect(in size: CGSize, floatingChrome: Bool) -> CGRect {
+        let topReserved: CGFloat = floatingChrome ? 10 + 48 + 16 : 16
         let margin: CGFloat = 24
         let x = margin
         let y = topReserved
@@ -87,7 +88,7 @@ struct CardZoomOverlay: View {
     }
 
     private func landingPoint(in containerSize: CGSize) -> CGPoint {
-        let safe = Self.safePanelRect(in: containerSize, liquidGlass: theme.isLiquidGlass)
+        let safe = Self.safePanelRect(in: containerSize, floatingChrome: floatingChrome)
         return CGPoint(x: safe.midX, y: safe.midY)
     }
 
@@ -112,7 +113,7 @@ struct CardZoomOverlay: View {
     }
 
     private func pocketTravel(for selection: CardSelection, in containerSize: CGSize) -> (scale: CGFloat, offset: CGSize) {
-        let safe = Self.safePanelRect(in: containerSize, liquidGlass: theme.isLiquidGlass)
+        let safe = Self.safePanelRect(in: containerSize, floatingChrome: floatingChrome)
         let metrics = CardDetailMetrics.fitting(safe: safe.size)
         let landing = CGPoint(x: safe.midX, y: safe.midY)
         return (

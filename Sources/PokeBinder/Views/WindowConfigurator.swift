@@ -1,14 +1,18 @@
 import SwiftUI
 import AppKit
 
-/// Hides the window title text while keeping the toolbar.
+/// Hides the window title text and, when chrome is floating, extends content under a
+/// transparent titlebar so the grid (and Liquid Glass binder) can run to the top edge.
 ///
 /// `.windowStyle(.hiddenTitleBar)` would take the whole titlebar — and the toolbar
 /// with it — so the title is suppressed on the `NSWindow` directly instead. Without
 /// this, "PokeBinder" sits between the view tabs and the search field and pushes the
-/// search field off centre.
+/// search field off centre. The toolbar-vs-full-size-content decision lives here too:
+/// Classic binder keeps a real unified toolbar; floating chrome inserts
+/// `.fullSizeContentView` and makes the titlebar transparent.
 struct WindowConfigurator: NSViewRepresentable {
     let style: AppStyle
+    let floating: Bool
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -41,10 +45,10 @@ struct WindowConfigurator: NSViewRepresentable {
 
     private func configure(_ window: NSWindow) {
         window.titleVisibility = .hidden
-        window.titlebarAppearsTransparent = style == .liquidGlass
-        window.isMovableByWindowBackground = style == .liquidGlass
+        window.titlebarAppearsTransparent = floating
+        window.isMovableByWindowBackground = floating
 
-        if style == .liquidGlass {
+        if floating {
             window.styleMask.insert(.fullSizeContentView)
         } else {
             window.styleMask.remove(.fullSizeContentView)
