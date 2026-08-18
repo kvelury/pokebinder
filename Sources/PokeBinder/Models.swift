@@ -41,6 +41,15 @@ struct BinderSlot: Identifiable, Hashable {
             )
         }
     }
+
+    static func forDex(_ dex: Int) -> BinderSlot {
+        BinderSlot(
+            page: Pokedex.page(for: dex),
+            side: Pokedex.side(for: dex),
+            slot: Pokedex.slot(for: dex),
+            dexNumber: dex
+        )
+    }
 }
 
 /// How a slot should be drawn once search is taken into account.

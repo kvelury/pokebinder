@@ -19,6 +19,11 @@ struct ContentView: View {
     @StateObject private var collection = CollectionStore()
     @StateObject private var notion = NotionManager()
     @StateObject private var hoverTooltip = HoverTooltipModel()
+    // Plain @State, not @StateObject, on purpose: ContentView must NOT subscribe to this
+    // object. cardWidth changes on every frame of a pinch, and a @StateObject here would
+    // re-evaluate the whole ContentView body — toolbar, overlay, tooltip host — 60 times a
+    // second. GridView and GridZoomMeter take it as @EnvironmentObject and observe it there.
+    @State private var grid = GridState()
     @State private var showSettings = false
     @State private var selection: CardSelection?
     @State private var isAppActive = true
@@ -38,7 +43,7 @@ struct ContentView: View {
                 case .binder:
                     BinderView(selection: $selection)
                 case .grid:
-                    GridViewStub()
+                    GridView(selection: $selection)
                 }
             }
             .padding(.top, theme.isLiquidGlass ? 54 : 0)
@@ -70,6 +75,7 @@ struct ContentView: View {
         .environmentObject(collection)
         .environmentObject(notion)
         .environmentObject(hoverTooltip)
+        .environmentObject(grid)
         .toolbar { toolbarContent }
         // The app's name is already in the menu bar; a second copy of it between the
         // view tabs and the search field is just noise. `titleVisibility = .hidden` on
@@ -85,8 +91,11 @@ struct ContentView: View {
                 .environmentObject(collection)
                 .environmentObject(notion)
         }
-        .onChange(of: binder.viewMode) { _, _ in
+        .onChange(of: binder.viewMode) { old, new in
             withAnimation(cardDetailMotion) { selection = nil }
+            if old == .grid, new == .binder {
+                binder.goTo(page: Pokedex.page(for: grid.anchorDex))
+            }
         }
         .task {
             if notion.isConnected {
@@ -155,7 +164,12 @@ struct ContentView: View {
     /// gets, so it sits under the spine rather than drifting.
     private var bottomBar: some View {
         ZStack {
-            PagerBar()
+            Group {
+                switch binder.viewMode {
+                case .binder: PagerBar()
+                case .grid:   GridZoomMeter()
+                }
+            }
             HStack {
                 NotionResyncButton()
                 Spacer()
@@ -303,6 +317,12 @@ struct ContentView: View {
         reduceMotion ? AppMotion.quick : AppMotion.cardDetail
     }
 
+    private func zoomStep(_ action: () -> Void) {
+        withAnimation(AppMotion.respectingReduceMotion(AppMotion.feedback, reduceMotion: reduceMotion)) {
+            action()
+        }
+    }
+
     /// One wide pill holding icon, field, match counter and clear button. Search gets
     /// the whole middle of the bar rather than a 190pt slot, because it is the only
     /// control here anyone reaches for repeatedly.
@@ -354,6 +374,14 @@ struct ContentView: View {
                 .keyboardShortcut(.leftArrow, modifiers: .command)
             Button("") { binder.next() }
                 .keyboardShortcut(.rightArrow, modifiers: .command)
+            Button("") { if binder.viewMode == .grid { zoomStep { grid.stepIn() } } }
+                .keyboardShortcut("+", modifiers: .command)
+            Button("") { if binder.viewMode == .grid { zoomStep { grid.stepIn() } } }
+                .keyboardShortcut("=", modifiers: .command)
+            Button("") { if binder.viewMode == .grid { zoomStep { grid.stepOut() } } }
+                .keyboardShortcut("-", modifiers: .command)
+            Button("") { if binder.viewMode == .grid { zoomStep { grid.resetZoom() } } }
+                .keyboardShortcut("0", modifiers: .command)
         }
         .frame(width: 0, height: 0)
         .opacity(0)

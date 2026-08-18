@@ -24,4 +24,6 @@ enum AppSettings {
     static let notionSyncIntervalKey = "pokebinder.notionSyncInterval"
     static let notionSyncCustomMinutesKey = "pokebinder.notionSyncCustomMinutes"
     static let defaultNotionSyncCustomMinutes = NotionSyncInterval.defaultCustomMinutes
+
+    static let gridCardWidthKey = "pokebinder.gridCardWidth"
 }
