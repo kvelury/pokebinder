@@ -12,7 +12,7 @@ struct GridView: View {
     @Binding var selection: CardSelection?
 
     private let outerInset:  CGFloat = 28   // horizontal margin; also feeds the column math
-    private let topInset:    CGFloat = 118  // 58pt floating cluster + 60pt breathing room
+    private let topInset:    CGFloat = 86   // 58pt floating cluster + 28pt gap
     private let bottomInset: CGFloat = 88
 
     private enum ScrollTarget: Hashable {
