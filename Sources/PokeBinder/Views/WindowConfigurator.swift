@@ -13,6 +13,7 @@ import AppKit
 struct WindowConfigurator: NSViewRepresentable {
     let style: AppStyle
     let floating: Bool
+    let movableByWindowBackground: Bool
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -46,7 +47,10 @@ struct WindowConfigurator: NSViewRepresentable {
     private func configure(_ window: NSWindow) {
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = floating
-        window.isMovableByWindowBackground = floating
+        // A grid window must not treat controls as draggable background: doing so
+        // lets a drag on the custom zoom track move the window instead of its thumb.
+        // The transparent titlebar itself remains a normal window drag region.
+        window.isMovableByWindowBackground = movableByWindowBackground
 
         if floating {
             window.styleMask.insert(.fullSizeContentView)

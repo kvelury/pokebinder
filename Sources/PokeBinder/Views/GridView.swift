@@ -15,6 +15,10 @@ struct GridView: View {
     private let topInset:    CGFloat = 86   // 58pt floating cluster + 28pt gap
     private let bottomInset: CGFloat = 88
 
+    private enum ScrollTarget: Hashable {
+        case top
+    }
+
     var body: some View {
         GeometryReader { geo in
             let m = grid.metrics
@@ -27,31 +31,39 @@ struct GridView: View {
 
             ScrollViewReader { proxy in
                 ScrollView(.vertical) {
-                    LazyVGrid(
-                        columns: Array(
-                            repeating: GridItem(.fixed(m.cardWidth), spacing: gap),
-                            count: columns
-                        ),
-                        spacing: gap
-                    ) {
-                        ForEach(1...Pokedex.count, id: \.self) { dex in
-                            CardSlotView(
-                                slot: BinderSlot.forDex(dex),
-                                metrics: m,
-                                isOwned: collection.isOwned(dex),
-                                emphasis: binder.emphasis(for: dex),
-                                selection: $selection
-                            )
-                            .id(dex)
+                    LazyVStack(spacing: 0) {
+                        // Real scroll content, rather than a ScrollView content margin:
+                        // ScrollViewReader can jump past a margin and hide row 1 under
+                        // the floating controls when entering grid mode.
+                        Color.clear
+                            .frame(height: topInset)
+                            .id(ScrollTarget.top)
+
+                        LazyVGrid(
+                            columns: Array(
+                                repeating: GridItem(.fixed(m.cardWidth), spacing: gap),
+                                count: columns
+                            ),
+                            spacing: gap
+                        ) {
+                            ForEach(1...Pokedex.count, id: \.self) { dex in
+                                CardSlotView(
+                                    slot: BinderSlot.forDex(dex),
+                                    metrics: m,
+                                    isOwned: collection.isOwned(dex),
+                                    emphasis: binder.emphasis(for: dex),
+                                    selection: $selection
+                                )
+                                .id(dex)
+                            }
                         }
+                        .padding(pad)
+                        .background(pageSheet(metrics: m))
+                        .frame(width: sheetW)
+                        .frame(maxWidth: .infinity)
+                        .padding(.bottom, bottomInset)
                     }
-                    .padding(pad)
-                    .background(pageSheet(metrics: m))
-                    .frame(width: sheetW)
-                    .frame(maxWidth: .infinity)
-                    .padding(.bottom, bottomInset)
                 }
-                .contentMargins(.top, topInset, for: .scrollContent)
                 .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { _, y in
                     let rowHeight = m.cardHeight + gap
                     let centreRow = (y + viewportHeight / 2 - pad - topInset) / rowHeight
@@ -72,13 +84,24 @@ struct GridView: View {
                 }
                 .onChange(of: binder.currentPage) { _, page in
                     guard !binder.isSearching else { return }
-                    proxy.scrollTo((page - 1) * Pokedex.slotsPerPage + 1, anchor: .top)
+                    scrollToPageStart(
+                        page,
+                        metrics: m,
+                        viewportHeight: viewportHeight,
+                        proxy: proxy
+                    )
                 }
                 .onAppear {
-                    let dex = (binder.currentPage - 1) * Pokedex.slotsPerPage + 1
                     var transaction = Transaction()
                     transaction.disablesAnimations = true
-                    withTransaction(transaction) { proxy.scrollTo(dex, anchor: .top) }
+                    withTransaction(transaction) {
+                        scrollToPageStart(
+                            binder.currentPage,
+                            metrics: m,
+                            viewportHeight: viewportHeight,
+                            proxy: proxy
+                        )
+                    }
                 }
             }
             .overlay {
@@ -89,6 +112,26 @@ struct GridView: View {
             }
         }
         .task { await ArtworkStore.shared.prefetchAll() }
+    }
+
+    /// Place the requested page's first row below the floating controls. Page 1
+    /// targets the real top spacer so that clearance scrolls away naturally. Later
+    /// pages use an equivalent viewport anchor instead of landing flush at y = 0.
+    private func scrollToPageStart(
+        _ page: Int,
+        metrics: BinderMetrics,
+        viewportHeight: CGFloat,
+        proxy: ScrollViewProxy
+    ) {
+        let dex = (page - 1) * Pokedex.slotsPerPage + 1
+        guard dex > 1 else {
+            proxy.scrollTo(ScrollTarget.top, anchor: .top)
+            return
+        }
+
+        let availableTravel = max(viewportHeight - metrics.cardHeight, 1)
+        let anchorY = min(max(topInset / availableTravel, 0), 1)
+        proxy.scrollTo(dex, anchor: UnitPoint(x: 0.5, y: anchorY))
     }
 
     private func handleMagnify(_ event: TrackpadMagnifyEvent) {

@@ -75,7 +75,11 @@ struct ContentView: View {
                 .zIndex(100)
         }
         .coordinateSpace(.named(BinderSpace.content))
-        .background(WindowConfigurator(style: theme.style, floating: floatingChrome))
+        .background(WindowConfigurator(
+            style: theme.style,
+            floating: floatingChrome,
+            movableByWindowBackground: theme.isLiquidGlass && binder.viewMode == .binder
+        ))
         .environmentObject(binder)
         .environmentObject(collection)
         .environmentObject(notion)
