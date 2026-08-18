@@ -38,13 +38,12 @@ struct CardHoverCard: View {
     private var isOwned: Bool { collection.isOwned(dexNumber) }
 
     private var header: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
             Text(Pokedex.name(for: dexNumber))
                 .font(theme.nameFont(size: metrics.hoverTitleFontSize))
                 .foregroundStyle(theme.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
-            Spacer(minLength: 8)
             Text("#\(Pokedex.formattedNumber(dexNumber))")
                 .font(theme.numberFont(size: metrics.hoverNumberFontSize))
                 .foregroundStyle(theme.textSecondary)
