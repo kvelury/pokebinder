@@ -104,6 +104,8 @@ struct ContentView: View {
             withAnimation(cardDetailMotion) { selection = nil }
             if old == .grid, new == .binder {
                 binder.goTo(page: Pokedex.page(for: grid.anchorDex))
+            } else if old == .binder, new == .grid {
+                grid.notePageStart(page: binder.currentPage)
             }
         }
         .onChange(of: selection) { _, new in
@@ -392,9 +394,9 @@ struct ContentView: View {
                 .keyboardShortcut("g", modifiers: .command)
             Button("") { binder.previousMatch() }
                 .keyboardShortcut("g", modifiers: [.command, .shift])
-            Button("") { binder.previous() }
+            Button("") { navigatePage { binder.previous() } }
                 .keyboardShortcut(.leftArrow, modifiers: .command)
-            Button("") { binder.next() }
+            Button("") { navigatePage { binder.next() } }
                 .keyboardShortcut(.rightArrow, modifiers: .command)
             Button("") { if binder.viewMode == .grid { zoomStep { grid.stepIn() } } }
                 .keyboardShortcut("+", modifiers: .command)
@@ -407,5 +409,12 @@ struct ContentView: View {
         }
         .frame(width: 0, height: 0)
         .opacity(0)
+    }
+
+    /// Grid search owns scroll position while it is active; page shortcuts would
+    /// otherwise mutate a hidden page and make the next command appear to skip.
+    private func navigatePage(_ action: () -> Void) {
+        guard binder.viewMode != .grid || !binder.isSearching else { return }
+        action()
     }
 }

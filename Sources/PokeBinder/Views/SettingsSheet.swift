@@ -15,6 +15,7 @@ struct SettingsSheet: View {
     @AppStorage(AppSettings.glassPaletteKey) private var glassPalette: GlassPalette = .fullGlass
     @AppStorage(AppSettings.typeEraKey) private var typeEra: TypeEra = .current
     @AppStorage(AppSettings.matchupDetailLevelKey) private var matchupDetailLevel: MatchupDetailLevel = .simple
+    @AppStorage(AppSettings.gridLayoutKey) private var gridLayout: GridLayoutMode = .classic
 
     /// Defaulted to the database from the spec, but editable rather than hardcoded.
     @AppStorage(AppSettings.notionDatabaseIdKey)
@@ -60,6 +61,18 @@ struct SettingsSheet: View {
                     .pickerStyle(.segmented)
 
                     Text("Auto follows the Appearance setting in System Settings.")
+                        .font(.caption)
+                        .foregroundStyle(theme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Section("Grid") {
+                    Picker("Grid mode", selection: $gridLayout) {
+                        ForEach(GridLayoutMode.allCases) { Text($0.title).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+
+                    Text("Classic reflows columns as you zoom and scrolls vertically. Continuous is a fixed surface you can pan in any direction.")
                         .font(.caption)
                         .foregroundStyle(theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)

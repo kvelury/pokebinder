@@ -26,7 +26,10 @@ final class HoverTooltipModel: ObservableObject {
         targetFrame: CGRect,
         animation: Animation?
     ) {
-        guard !isSuppressed else { return }
+        // Opening the focused detail panel suppresses the large beside-card preview,
+        // but labels inside that panel (page details and type names) still need this
+        // shared host.
+        if isSuppressed, case .card = content { return }
         pendingTask?.cancel()
         pendingID = id
 

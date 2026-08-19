@@ -78,6 +78,13 @@ final class GridState: ObservableObject {
         anchorDex = min(max(dex, 1), Pokedex.count)
     }
 
+    /// Seed the grid from the binder page you just left, so both layouts open
+    /// on the same cards.
+    func notePageStart(page: Int) {
+        let dex = (page - 1) * Pokedex.slotsPerPage + 1
+        noteAnchor(dex: dex)
+    }
+
     private static func loadPersistedWidth() -> CGFloat {
         let defaults = UserDefaults.standard
         guard defaults.object(forKey: AppSettings.gridCardWidthKey) != nil else {
