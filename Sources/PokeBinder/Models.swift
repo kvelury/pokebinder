@@ -18,6 +18,22 @@ enum ViewMode: Hashable, CaseIterable, Identifiable {
     }
 }
 
+/// How the grid lays out and scrolls. Classic is the original vertical reflow
+/// sheet. Continuous is a fixed 2D surface you can pan in any direction.
+enum GridLayoutMode: String, CaseIterable, Identifiable {
+    case classic
+    case continuous
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .classic: "Classic"
+        case .continuous: "Continuous"
+        }
+    }
+}
+
 /// One pocket of the binder. `dexNumber` is nil for the permanently empty pocket
 /// at the end of page 19.
 struct BinderSlot: Identifiable, Hashable {

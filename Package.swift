@@ -6,6 +6,10 @@ let package = Package(
     platforms: [.macOS("26.0")],
     targets: [
         .target(
+            name: "PokeBinderGrid",
+            path: "Sources/PokeBinderGrid"
+        ),
+        .target(
             name: "PokeBinderSync",
             path: "Sources/PokeBinderSync"
         ),
@@ -15,7 +19,7 @@ let package = Package(
         ),
         .executableTarget(
             name: "PokeBinder",
-            dependencies: ["PokeBinderSync", "PokeBinderMatchup"],
+            dependencies: ["PokeBinderGrid", "PokeBinderSync", "PokeBinderMatchup"],
             path: "Sources/PokeBinder",
             resources: [
                 .copy("Resources/TypeIcons")
@@ -30,7 +34,7 @@ let package = Package(
         ),
         .executableTarget(
             name: "PokeBinderTests",
-            dependencies: ["PokeBinderMatchup"],
+            dependencies: ["PokeBinderGrid", "PokeBinderMatchup"],
             path: "Tests/PokeBinderTests"
         )
     ]

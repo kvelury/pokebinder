@@ -8,8 +8,9 @@ that got it here and the reasons they should not be quietly undone.
 - `handoff.md` is **not** tracked (it is in `.gitignore`). It is scratch: the work order for whoever
   is picking up the next chunk. Nothing durable should live only there.
 
-Last updated for: **Card hover**. Parts 1–6, optional Liquid Glass themes, queued two-way
-Notion refresh, the continuous pinch-zoomable grid, and the beside-card type hover card are shipped.
+Last updated for: **Continuous grid mode**. Parts 1–6, optional Liquid Glass themes, queued
+two-way Notion refresh, Classic and Continuous grid layouts, and the beside-card type hover
+card are shipped.
 
 ---
 
@@ -89,8 +90,10 @@ an ordinary SwiftPM executable rather than `swift test`:
 
 ```bash
 swift run PokeBinderSyncCheck
+swift run PokeBinderTests
 ```
 
+`PokeBinderTests` covers type-matchup math and the Continuous grid topology contract.
 App verification is still by running the built `.app`. Do not treat the checks as a
 substitute for a connected Notion pass.
 
@@ -101,7 +104,7 @@ Each of these keys stored user data; renaming any of them silently discards it.
 - `CFBundleIdentifier` = `com.pokebinder.app` — the `UserDefaults` domain is keyed by it.
 - The `pokebinder.*` UserDefaults keys in `AppSettings` (appearance, type era, Notion tokens,
   `pokebinder.notionSyncInterval`, `pokebinder.notionSyncCustomMinutes`,
-  `pokebinder.gridCardWidth`), and
+  `pokebinder.gridCardWidth`, `pokebinder.gridLayout`), and
   `localOwnedDexNumbers` in `CollectionStore`.
 - The Application Support paths, which stay ASCII `PokeBinder` despite the display name:
   `PokeBinder/artwork/` and `PokeBinder/ownership.json`.
@@ -149,17 +152,20 @@ Sources/PokeBinderSync/          testable sync library (no UI)
 
 Tests/PokeBinderSyncCheck/       `swift run PokeBinderSyncCheck`
 
+Sources/PokeBinderGrid/
+└── ContinuousGridLayout.swift  testable fixed-surface topology and anchor geometry
+
 Sources/PokeBinder/
 ├── PokeBinderApp.swift     @main — WindowGroup, appearance apply, theme environment, window sizing
 ├── Appearance.swift        app style, glass palette, and Light / Dark / Auto
 ├── AppSettings.swift       the pokebinder.* UserDefaults keys
 ├── Pokedex.swift           151 names + the derivation above + artwork URLs
-├── Models.swift            BinderSide, ViewMode, BinderSlot, SlotEmphasis
+├── Models.swift            BinderSide, ViewMode, GridLayoutMode, BinderSlot, SlotEmphasis
 ├── Theme.swift             environment palette + adaptive tokens + typography + BinderMetrics
 ├── ArtworkStore.swift      actor + disk cache + prefetch, and CardArtworkView
 ├── CollectionStore.swift   OwnershipBackend, LocalOwnershipBackend, CollectionStore
 ├── BinderState.swift       navigation + search (matching, auto-flip, cycling, emphasis)
-├── GridState.swift         live grid cardWidth, log zoom mapping, scroll anchor
+├── GridState.swift         live grid cardWidth, log zoom mapping, 2D scroll anchor
 ├── Notion/
 │   ├── NotionAuth.swift             OAuth 2.1, dynamic client registration, PKCE, loopback server
 │   ├── NotionMCPClient.swift        Streamable-HTTP MCP: initialize → tools/call, SSE parsing
@@ -175,9 +181,11 @@ Sources/PokeBinder/
     ├── CardZoomOverlay.swift    scrim + the pocket→centre pop
     ├── PagerBar.swift           ◀ · click-to-edit N / 19 · ▶, NotionResyncButton, CollectedCountPill
     ├── PillChrome.swift         shared Classic/glass control and panel surfaces
-    ├── GridView.swift           the continuous grid, page sheet, pinch catcher
+    ├── GridView.swift           Classic vs Continuous router + pinch catcher
+    ├── ClassicGridView.swift    vertical reflow sheet (the original grid)
+    ├── ContinuousGridView.swift fixed 14-column 2D surface
     ├── GridZoomMeter.swift      the floating zoom control that replaces the pager
-    └── SettingsSheet.swift      Collection / Theme / Notion / About sections
+    └── SettingsSheet.swift      Collection / Theme / Grid / Notion / About sections
 ```
 
 ### Three contracts to preserve
@@ -362,15 +370,19 @@ does **not** go through SwiftUI hit testing, so a scrim above it would still let
 the page underneath the panel. While a card is up the catcher is suspended and **returns the event
 unconsumed** — swallowing it would deaden scrolling app-wide, including in the Settings sheet.
 
-**Grid view.** A continuous 151-card grid on one page sheet (the binder's paper, hairline, and
-drop shadow, without the gutter gradient). Pinch-zoom reflows the column count by changing
-`cardWidth` (80–260pt, log-mapped) rather than applying a `.scaleEffect`, so each cell is
-literally the binder's `CardSlotView` at a different size. A bottom-centre glass meter replaces
-the pager; ⌘+/⌘−/⌘0 step and reset. Search spotlight and auto-scroll work as in the binder;
-⌘←/⌘→ step 8 cards via the existing `goTo`. Switching modes keeps you on the same cards.
-Grid mode always uses floating chrome: no toolbar, content to the top of the window, the three
-control clusters pinned over the cards. An 86pt top inset (58pt floating cluster + 28pt gap)
-keeps the first row clear at rest; cards pass underneath the pills once you scroll.
+**Grid view.** Settings → Grid chooses **Classic** or **Continuous**. Both share `CardSlotView`,
+the zoom meter, pinch-to-reflow (`cardWidth` 80–260pt, log-mapped — never `.scaleEffect`),
+search spotlight, and ⌘←/⌘→ page steps via `goTo`. Switching Binder ↔ Grid, or Classic ↔
+Continuous, keeps you on the same cards. Grid mode always uses floating chrome.
+
+- **Classic** (default) is the original vertical 151-card sheet: binder paper, hairline, and
+  drop shadow, columns reflowing as you zoom, vertical scroll only. An 86pt top inset (58pt
+  floating cluster + 28pt gap) keeps the first row clear at rest; cards pass underneath the
+  pills once you scroll.
+- **Continuous** is a fixed 14-column rectangular surface (11 rows; last row has 11 cards)
+  that runs edge to edge. Two-finger trackpad pans in any direction with native momentum and
+  rubber-band bounds. Cards clip at the window edge and can sit under the floating controls.
+  Zoom still changes `cardWidth` and recenters on the card that was in the middle.
 
 ## 7. Settings & theming
 
@@ -387,6 +399,8 @@ Preference keys follow `AppSettings`: `static let <name>Key = "pokebinder.<name>
 
 - **Collection** — the active backend name and the collected count.
 - **Theme** — Classic/Liquid Glass style, the four glass palettes, and appearance (below).
+- **Grid** — Classic or Continuous layout. Classic is the default so existing installs keep
+  the vertical reflow sheet. Continuous is the fixed 2D surface.
 - **Types** — Current or original Gen I assignments. Current is the default; Gen I removes later
   Steel/Fairy changes from the seven affected Pokémon. Hover matchups (Simple / Advanced / Full)
   controls only the hover card's rows; the click-open focused card always shows Full details.
@@ -446,9 +460,12 @@ without asking.**
 | **App name `PokéBinder`**, with the accent | Matches the official Pokémon spelling. Bundle display strings only; there is still no window title. |
 | **macOS 26 only** | See §2 — a fallback for 14/15 could never be tested here. |
 | **Grid reflows on zoom rather than scaling** | A transform never becomes an overview and resamples text; relayout keeps the card identical to the binder's at every level. |
-| **One continuous page sheet behind the grid** | `theme.sleeve` was designed against paper; on the window background the pocket edge collapses in light mode. |
+| **Classic grid is the default layout** | Existing installs keep the vertical reflow sheet; Continuous is opt-in in Settings. |
+| **One page sheet behind Classic grid** | `theme.sleeve` was designed against paper; on the window background the pocket edge collapses in light mode. Continuous drops the sheet so cards can run edge to edge. |
+| **Continuous grid is a fixed 14-column surface** | Reflow would remove horizontal overflow. A fixed topology is what makes two-finger pan in every direction real. |
+| **Continuous pan uses native ScrollView momentum** | AppKit already supplies diagonal travel, acceleration, and rubber-band bounds. A custom scroll catcher would steal events from that. |
 | **The zoom meter replaces the pager in grid mode** | A continuous grid has no pages to turn, and two centre controls would crowd the bar. |
-| **Grid mode hides the toolbar and floats the controls** | A continuous grid should not be capped by a permanent slab. The 86pt top inset keeps the first row clear at rest — the only moment the pills are fully exposed — and cards pass under them once you scroll. |
+| **Grid mode hides the toolbar and floats the controls** | A grid should not be capped by a permanent slab. Classic keeps an 86pt top inset so the first row is clear at rest; Continuous starts at the window edge and lets cards sit under the pills. |
 | **Grid draws no empty 152nd pocket** | That pocket is a binder artifact, not a Pokédex one. |
 | **Notion is optional** | The binder is fully usable offline; Notion adds ownership sync, it isn't a prerequisite. |
 | **Queued Notion writes, local pending wins** | Toggles stay instant in the UI. Remote I/O waits for the next interval or the always-visible resync. A queued app edit beats a conflicting Notion value for that Pokédex number. |

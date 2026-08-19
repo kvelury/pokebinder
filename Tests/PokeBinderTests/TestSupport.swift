@@ -33,7 +33,7 @@ struct TestCase {
 @main
 struct PokeBinderTests {
     static func main() async {
-        let tests = calculatorTests() + decodingTests() + storeTests()
+        let tests = calculatorTests() + decodingTests() + storeTests() + continuousGridLayoutTests()
         var failed = 0
         for test in tests {
             do {
